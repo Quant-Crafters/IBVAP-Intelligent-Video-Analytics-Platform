@@ -1,25 +1,21 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import DashboardLayout from "../layouts/DashboardLayout";
-import Dashboard from "../pages/Dashboard";
+import Landing from "../pages/landing";
+import Login from "../pages/Login";
+import Register from "../pages/Register";
 
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/dashboard"
-          element={
-            <DashboardLayout>
-              <Dashboard />
-            </DashboardLayout>
-          }
-        />
 
-        <Route
-          path="/"
-          element={<Navigate to="/dashboard" replace />}
-        />
+        {/* Public Website */}
+        <Route path="/" element={<Landing />} />
+
+        {/* Authentication */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
       </Routes>
     </BrowserRouter>
   );
