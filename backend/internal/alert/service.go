@@ -10,10 +10,12 @@ import (
 )
 
 var (
-	ErrAlertNotFound   = errors.New("alert not found")
-	ErrInvalidSeverity = errors.New("invalid severity")
-	ErrInvalidStatus   = errors.New("invalid alert status")
-	ErrInvalidType     = errors.New("invalid alert type")
+	ErrAlertNotFound     = errors.New("alert not found")
+	ErrInvalidSeverity   = errors.New("invalid severity")
+	ErrInvalidStatus     = errors.New("invalid alert status")
+	ErrInvalidType       = errors.New("invalid alert type")
+	ErrInvalidTimestamp  = errors.New("invalid timestamp")
+	ErrInvalidConfidence = errors.New("confidence must be between 0 and 1")
 )
 
 type Service struct {
@@ -26,31 +28,57 @@ func NewService(repository *Repository) *Service {
 	}
 }
 
+// Create creates a new alert after validating the request.
 func (s *Service) Create(req CreateAlertRequest) (*AlertResponse, error) {
 	alertType := strings.TrimSpace(strings.ToLower(req.Type))
 	severity := strings.TrimSpace(strings.ToLower(req.Severity))
 	status := strings.TrimSpace(strings.ToLower(req.Status))
 
-	if req.CameraID == 0 || alertType == "" || severity == "" ||
-		req.Timestamp == "" || status == "" {
-		return nil, errors.New("required alert fields are missing")
+	// Validate required fields.
+	if req.CameraID == 0 {
+		return nil, errors.New("camera_id is required")
 	}
 
+	if alertType == "" {
+		return nil, errors.New("alert type is required")
+	}
+
+	if severity == "" {
+		return nil, errors.New("severity is required")
+	}
+
+	if status == "" {
+		return nil, errors.New("status is required")
+	}
+
+	if req.Timestamp == "" {
+		return nil, errors.New("timestamp is required")
+	}
+
+	// Validate alert type.
+	if !isValidType(alertType) {
+		return nil, ErrInvalidType
+	}
+
+	// Validate severity.
 	if !isValidSeverity(severity) {
 		return nil, ErrInvalidSeverity
 	}
 
+	// Validate status.
 	if !isValidStatus(status) {
 		return nil, ErrInvalidStatus
 	}
 
+	// Validate timestamp.
 	timestamp, err := time.Parse(time.RFC3339, req.Timestamp)
 	if err != nil {
-		return nil, fmt.Errorf("invalid timestamp: %w", err)
+		return nil, fmt.Errorf("%w: timestamp must be RFC3339", ErrInvalidTimestamp)
 	}
 
+	// Validate confidence.
 	if req.Confidence < 0 || req.Confidence > 1 {
-		return nil, errors.New("confidence must be between 0 and 1")
+		return nil, ErrInvalidConfidence
 	}
 
 	alert := &Alert{
@@ -58,7 +86,7 @@ func (s *Service) Create(req CreateAlertRequest) (*AlertResponse, error) {
 		Type:       alertType,
 		Severity:   severity,
 		Confidence: req.Confidence,
-		Timestamp:  timestamp,
+		Timestamp:  timestamp.UTC(),
 		Status:     status,
 		Evidence:   strings.TrimSpace(req.Evidence),
 	}
@@ -70,6 +98,7 @@ func (s *Service) Create(req CreateAlertRequest) (*AlertResponse, error) {
 	return toAlertResponse(alert), nil
 }
 
+// GetAll returns all alerts.
 func (s *Service) GetAll() ([]AlertResponse, error) {
 	alerts, err := s.repository.FindAll()
 	if err != nil {
@@ -79,13 +108,22 @@ func (s *Service) GetAll() ([]AlertResponse, error) {
 	responses := make([]AlertResponse, 0, len(alerts))
 
 	for i := range alerts {
-		responses = append(responses, *toAlertResponse(&alerts[i]))
+		response := toAlertResponse(&alerts[i])
+
+		if response != nil {
+			responses = append(responses, *response)
+		}
 	}
 
 	return responses, nil
 }
 
+// GetByID returns an alert by ID.
 func (s *Service) GetByID(id uint) (*AlertResponse, error) {
+	if id == 0 {
+		return nil, ErrAlertNotFound
+	}
+
 	alert, err := s.repository.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -98,7 +136,16 @@ func (s *Service) GetByID(id uint) (*AlertResponse, error) {
 	return toAlertResponse(alert), nil
 }
 
-func (s *Service) Update(id uint, req UpdateAlertRequest) (*AlertResponse, error) {
+// Update updates an existing alert.
+func (s *Service) Update(
+	id uint,
+	req UpdateAlertRequest,
+) (*AlertResponse, error) {
+
+	if id == 0 {
+		return nil, ErrAlertNotFound
+	}
+
 	alert, err := s.repository.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -108,10 +155,18 @@ func (s *Service) Update(id uint, req UpdateAlertRequest) (*AlertResponse, error
 		return nil, fmt.Errorf("fetching alert: %w", err)
 	}
 
+	// Update type.
 	if req.Type != "" {
-		alert.Type = strings.TrimSpace(strings.ToLower(req.Type))
+		alertType := strings.TrimSpace(strings.ToLower(req.Type))
+
+		if !isValidType(alertType) {
+			return nil, ErrInvalidType
+		}
+
+		alert.Type = alertType
 	}
 
+	// Update severity.
 	if req.Severity != "" {
 		severity := strings.TrimSpace(strings.ToLower(req.Severity))
 
@@ -122,14 +177,22 @@ func (s *Service) Update(id uint, req UpdateAlertRequest) (*AlertResponse, error
 		alert.Severity = severity
 	}
 
-	if req.Confidence != 0 {
-		if req.Confidence < 0 || req.Confidence > 1 {
-			return nil, errors.New("confidence must be between 0 and 1")
+	// Update confidence.
+	//
+	// Because Confidence is *float64, we can distinguish:
+	//
+	// nil  -> confidence was not provided
+	// 0    -> explicitly set confidence to 0
+	// 0.8  -> explicitly set confidence to 0.8
+	if req.Confidence != nil {
+		if *req.Confidence < 0 || *req.Confidence > 1 {
+			return nil, ErrInvalidConfidence
 		}
 
-		alert.Confidence = req.Confidence
+		alert.Confidence = *req.Confidence
 	}
 
+	// Update status.
 	if req.Status != "" {
 		status := strings.TrimSpace(strings.ToLower(req.Status))
 
@@ -140,6 +203,7 @@ func (s *Service) Update(id uint, req UpdateAlertRequest) (*AlertResponse, error
 		alert.Status = status
 	}
 
+	// Update evidence.
 	if req.Evidence != "" {
 		alert.Evidence = strings.TrimSpace(req.Evidence)
 	}
@@ -151,7 +215,12 @@ func (s *Service) Update(id uint, req UpdateAlertRequest) (*AlertResponse, error
 	return toAlertResponse(alert), nil
 }
 
+// Delete permanently deletes an alert.
 func (s *Service) Delete(id uint) error {
+	if id == 0 {
+		return ErrAlertNotFound
+	}
+
 	alert, err := s.repository.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -169,24 +238,34 @@ func (s *Service) Delete(id uint) error {
 }
 
 // Acknowledge marks an alert as acknowledged.
-// This action is used by Security Sentry.
 func (s *Service) Acknowledge(id uint) (*AlertResponse, error) {
 	return s.updateStatus(id, "acknowledged")
 }
 
 // Escalate marks an alert as escalated.
-// This action is used by Post Commander.
 func (s *Service) Escalate(id uint) (*AlertResponse, error) {
 	return s.updateStatus(id, "escalated")
 }
 
 // MarkFalseAlert marks an alert as a false alert.
-// This action is used by Post Commander.
 func (s *Service) MarkFalseAlert(id uint) (*AlertResponse, error) {
 	return s.updateStatus(id, "false_alert")
 }
 
-func (s *Service) updateStatus(id uint, status string) (*AlertResponse, error) {
+// updateStatus updates an alert's status.
+func (s *Service) updateStatus(
+	id uint,
+	status string,
+) (*AlertResponse, error) {
+
+	if id == 0 {
+		return nil, ErrAlertNotFound
+	}
+
+	if !isValidStatus(status) {
+		return nil, ErrInvalidStatus
+	}
+
 	alert, err := s.repository.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -205,7 +284,12 @@ func (s *Service) updateStatus(id uint, status string) (*AlertResponse, error) {
 	return toAlertResponse(alert), nil
 }
 
+// toAlertResponse converts the database model to the API response.
 func toAlertResponse(alert *Alert) *AlertResponse {
+	if alert == nil {
+		return nil
+	}
+
 	return &AlertResponse{
 		ID:         alert.ID,
 		CameraID:   alert.CameraID,
@@ -218,6 +302,15 @@ func toAlertResponse(alert *Alert) *AlertResponse {
 	}
 }
 
+// isValidType validates the alert type.
+//
+// We only require a non-empty type here because the actual
+// supported detection types should come from the AI engine.
+func isValidType(alertType string) bool {
+	return strings.TrimSpace(alertType) != ""
+}
+
+// isValidSeverity validates alert severity.
 func isValidSeverity(severity string) bool {
 	switch severity {
 	case "low", "medium", "high", "critical":
@@ -227,9 +320,14 @@ func isValidSeverity(severity string) bool {
 	}
 }
 
+// isValidStatus validates alert status.
 func isValidStatus(status string) bool {
 	switch status {
-	case "new", "acknowledged", "escalated", "false_alert", "resolved":
+	case "new",
+		"acknowledged",
+		"escalated",
+		"false_alert",
+		"resolved":
 		return true
 	default:
 		return false
