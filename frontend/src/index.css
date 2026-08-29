@@ -1,1 +1,56 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ibvap-bg: #070b12;
+  --color-ibvap-surface: #0c131d;
+  --color-ibvap-card: #101923;
+  --color-ibvap-card-hover: #151f2c;
+  --color-ibvap-border: #1d2a38;
+
+  --color-ibvap-primary: #2563eb;
+  --color-ibvap-primary-hover: #1d4ed8;
+
+  --color-ibvap-success: #22c55e;
+  --color-ibvap-warning: #f59e0b;
+  --color-ibvap-danger: #ef4444;
+
+  --color-ibvap-text: #f8fafc;
+  --color-ibvap-muted: #94a3b8;
+  --color-ibvap-subtle: #64748b;
+}
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  color: var(--color-ibvap-text);
+  background: var(--color-ibvap-bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background: var(--color-ibvap-bg);
+  color: var(--color-ibvap-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
