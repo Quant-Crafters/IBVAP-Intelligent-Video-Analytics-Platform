@@ -1,18 +1,14 @@
-import Sidebar from "../components/layout/Sidebar";
+import { Outlet } from "react-router-dom";
 import Topbar from "../components/layout/Topbar";
 
-function DashboardLayout({ children }) {
+function DashboardLayout() {
   return (
-    <div className="flex min-h-screen bg-ibvap-bg text-ibvap-text">
-      <Sidebar />
+    <div className="min-h-screen bg-ibvap-bg text-ibvap-text">
+      <Topbar />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
-
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
-      </div>
+      <main className="min-h-[calc(100vh-80px)]">
+        <Outlet />
+      </main>
     </div>
   );
 }

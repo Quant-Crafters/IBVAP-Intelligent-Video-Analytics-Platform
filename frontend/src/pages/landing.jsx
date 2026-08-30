@@ -126,9 +126,31 @@ export default function Landing() {
     setActiveNav(item);
     setShowProfileMenu(false);
 
-    if (item === "Home") {
-      window.scrollTo({
-        top: 0,
+    const routes = {
+      Home: "/",
+      "Live Overview": "/live-overview",
+      Analytics: "/analytics",
+      "Threat Alerts": "/threat-alerts",
+      Reports: "/reports",
+    };
+
+    if (routes[item]) {
+      navigate(routes[item]);
+      return;
+    }
+
+    // About Us and Contact remain sections of the landing page for now.
+    if (item === "About Us") {
+      const section = document.getElementById("about");
+      section?.scrollIntoView({
+        behavior: "smooth",
+      });
+      return;
+    }
+
+    if (item === "Contact") {
+      const section = document.getElementById("contact");
+      section?.scrollIntoView({
         behavior: "smooth",
       });
     }

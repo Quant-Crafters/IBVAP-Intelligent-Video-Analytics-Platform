@@ -11,6 +11,7 @@ import (
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/audit"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/auth"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/camera"
+	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/database"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/event"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/evidence"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/user"
@@ -41,6 +42,16 @@ func main() {
 	}
 
 	log.Println("PostgreSQL connected successfully")
+
+	// ---------------------------------------------------------
+	// Run database migrations
+	// ---------------------------------------------------------
+
+	if err := database.Migrate(db); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
+
+	log.Println("Database migration completed successfully")
 
 	// ---------------------------------------------------------
 	// Initialize repositories
