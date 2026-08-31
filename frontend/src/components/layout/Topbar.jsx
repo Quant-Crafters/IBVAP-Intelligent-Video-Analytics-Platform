@@ -1,17 +1,114 @@
 import { NavLink } from "react-router-dom";
+import { useMemo } from "react";
 
 function Topbar() {
-  const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Live Overview", path: "/live-overview" },
-    { label: "Analytics", path: "/analytics" },
-    { label: "Threat Alerts", path: "/threat-alerts" },
-    { label: "Reports", path: "/reports" },
-  ];
+  // Get the currently authenticated user from localStorage.
+  const user = useMemo(() => {
+    try {
+      const storedUser = localStorage.getItem("ibvap_user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Failed to read authenticated user:", error);
+      return null;
+    }
+  }, []);
+
+  const role = user?.role || "";
+
+  /*
+   * ============================================================
+   * ROLE-BASED NAVIGATION
+   * ============================================================
+   *
+   * Administrator:
+   * - Home
+   * - Live Overview
+   * - Analytics
+   * - Threat Alerts
+   * - Reports
+   *
+   * Post Commander:
+   * - Home
+   * - Live Overview
+   * - Analytics
+   * - Threat Alerts
+   * - Reports
+   *
+   * Security Sentry:
+   * - Home
+   * - Live Overview
+   * - Threat Alerts
+   */
+
+  const navItems = useMemo(() => {
+    const commonItems = [
+      { label: "Home", path: "/" },
+      { label: "Live Overview", path: "/live-overview" },
+    ];
+
+    switch (role) {
+      case "administrator":
+        return [
+          ...commonItems,
+          { label: "Analytics", path: "/analytics" },
+          { label: "Threat Alerts", path: "/threat-alerts" },
+          { label: "Reports", path: "/reports" },
+        ];
+
+      case "post_commander":
+        return [
+          ...commonItems,
+          { label: "Analytics", path: "/analytics" },
+          { label: "Threat Alerts", path: "/threat-alerts" },
+          { label: "Reports", path: "/reports" },
+        ];
+
+      case "security_sentry":
+        return [
+          ...commonItems,
+          { label: "Threat Alerts", path: "/threat-alerts" },
+        ];
+
+      default:
+        return commonItems;
+    }
+  }, [role]);
+
+  /*
+   * Human-readable role names.
+   */
+  const roleDisplayNames = {
+    administrator: "Administrator",
+    post_commander: "Post Commander",
+    security_sentry: "Security Sentry",
+  };
+
+  const displayRole =
+    roleDisplayNames[role] || "Officer";
+
+  /*
+   * Display the authenticated user's actual name.
+   * No hardcoded username.
+   */
+  const displayName = user?.name || "Officer";
+
+  /*
+   * Generate initials from the authenticated user's name.
+   */
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <>
-      {/* Government Bar */}
+      {/* =====================================================
+          GOVERNMENT BAR
+      ====================================================== */}
+
       <div className="bg-[#071426] px-6 py-2 text-center text-xs text-white">
         <span className="mr-4 border-r border-gray-500 pr-4">
           Government of India
@@ -22,11 +119,17 @@ function Topbar() {
         </span>
       </div>
 
-      {/* Main Navigation */}
+      {/* =====================================================
+          MAIN NAVIGATION
+      ====================================================== */}
+
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex min-h-[72px] items-center justify-between px-8">
 
-          {/* Logo / Branding */}
+          {/* =================================================
+              LOGO / BRANDING
+          ================================================== */}
+
           <NavLink
             to="/"
             className="flex flex-col leading-none"
@@ -40,7 +143,10 @@ function Topbar() {
             </span>
           </NavLink>
 
-          {/* Navigation */}
+          {/* =================================================
+              ROLE-BASED NAVIGATION
+          ================================================== */}
+
           <nav className="flex items-center gap-7">
             {navItems.map((item) => (
               <NavLink
@@ -67,25 +173,30 @@ function Topbar() {
             ))}
           </nav>
 
-          {/* Officer Profile */}
+          {/* =================================================
+              OFFICER PROFILE
+          ================================================== */}
+
           <div className="flex items-center gap-3 border-l border-gray-200 pl-6">
+
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#071426] text-sm font-semibold text-white">
-              O
+              {initials || "O"}
             </div>
 
             <div className="leading-tight">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-[#53657d]">
-                Officer
+                {displayRole}
               </p>
 
               <p className="text-sm font-semibold text-[#071426]">
-                Sunny
+                {displayName}
               </p>
             </div>
 
             <span className="ml-1 text-xs text-[#53657d]">
               ▼
             </span>
+
           </div>
 
         </div>
