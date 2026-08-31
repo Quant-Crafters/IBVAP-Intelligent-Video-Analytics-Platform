@@ -15,6 +15,7 @@ import LiveOverview from "../pages/LiveOverview";
 import ThreatAlerts from "../pages/ThreatAlerts";
 import Analytics from "../pages/Analytics";
 import Reports from "../pages/Reports";
+import LiveCameraGrid from "../pages/LiveCameraGrid";
 
 /*
  * ============================================================
@@ -284,8 +285,27 @@ function AppRoutes() {
             element={<SystemHealth />}
           />
 
+          <Route
+    path="live-camera-grid"
+    element={<LiveCameraGrid />}
+  />
+
         </Route>
 
+<Route
+  path="/live-camera-grid"
+  element={
+    <RoleProtectedRoute
+      allowedRoles={[
+        "administrator",
+        "post_commander",
+        "security_sentry",
+      ]}
+    >
+      <LiveCameraGrid />
+    </RoleProtectedRoute>
+  }
+/>
 
         {/* =====================================================
             FALLBACK

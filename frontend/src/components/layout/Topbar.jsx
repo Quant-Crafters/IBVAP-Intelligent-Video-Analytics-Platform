@@ -44,6 +44,7 @@ function Topbar() {
     const commonItems = [
       { label: "Home", path: "/" },
       { label: "Live Overview", path: "/live-overview" },
+      { label: "Live Camera Grid", path: "/live-camera-grid" },
     ];
 
     switch (role) {
