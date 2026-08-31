@@ -16,6 +16,18 @@ import ThreatAlerts from "../pages/ThreatAlerts";
 import Analytics from "../pages/Analytics";
 import Reports from "../pages/Reports";
 
+/*
+ * ============================================================
+ * ADMINISTRATOR
+ * ============================================================
+ */
+
+import AdminLayout from "../layouts/AdminLayout";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import CameraManagement from "../pages/admin/CameraManagement";
+import UserManagement from "../pages/admin/UserManagement";
+import SystemHealth from "../pages/admin/SystemHealth";
+
 
 /*
  * ============================================================
@@ -74,8 +86,6 @@ function RoleProtectedRoute({ allowedRoles, children }) {
     /*
      * User is authenticated but does not have permission
      * to access this page.
-     *
-     * Redirect them to Live Overview.
      */
     return <Navigate to="/live-overview" replace />;
   }
@@ -121,7 +131,9 @@ function AppRoutes() {
 
 
         {/* =====================================================
-            AUTHENTICATED APPLICATION
+            EXISTING TEAMMATE APPLICATION
+            SECURITY / POST COMMANDER
+            DO NOT CHANGE THESE ROUTES
         ====================================================== */}
 
         <Route
@@ -225,6 +237,51 @@ function AppRoutes() {
                 <Reports />
               </RoleProtectedRoute>
             }
+          />
+
+        </Route>
+
+
+        {/* =====================================================
+            ADMINISTRATOR APPLICATION
+
+            This is completely separate from the teammate's
+            DashboardLayout / Security / Commander flow.
+        ====================================================== */}
+
+        <Route
+          path="/admin"
+          element={
+            <RoleProtectedRoute
+              allowedRoles={["administrator"]}
+            >
+              <AdminLayout />
+            </RoleProtectedRoute>
+          }
+        >
+
+          {/* Administrator Dashboard */}
+          <Route
+            index
+            element={<AdminDashboard />}
+          />
+
+          {/* Camera Management */}
+          <Route
+            path="cameras"
+            element={<CameraManagement />}
+          />
+
+          {/* User Management */}
+          <Route
+            path="users"
+            element={<UserManagement />}
+          />
+
+          {/* System Health */}
+          <Route
+            path="system-health"
+            element={<SystemHealth />}
           />
 
         </Route>

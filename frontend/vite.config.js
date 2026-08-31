@@ -9,11 +9,16 @@ export default defineConfig({
   ],
 
   server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
+  proxy: {
+    "/api": {
+      target: "http://localhost:8080",
+      changeOrigin: true,
+    },
+
+    "/health": {
+      target: "http://localhost:8080",
+      changeOrigin: true,
     },
   },
+},
 });

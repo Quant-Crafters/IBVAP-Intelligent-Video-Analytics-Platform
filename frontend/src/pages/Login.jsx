@@ -92,15 +92,25 @@ export default function Login() {
       );
 
       console.log(
-        "Login successful:",
-        data.user
-      );
+  "Login successful:",
+  data.user
+);
 
-      // =====================================================
-      // ENTER APPLICATION
-      // =====================================================
+// =====================================================
+// ENTER APPLICATION
+// =====================================================
 
-      navigate("/live-overview");
+const role = String(data.user.role)
+  .trim()
+  .toLowerCase();
+
+if (role === "administrator") {
+  navigate("/admin");
+} else {
+  // Keep Security Sentry and Post Commander
+  // exactly on the teammate's existing flow.
+  navigate("/live-overview");
+}
 
     } catch (error) {
       console.error(
