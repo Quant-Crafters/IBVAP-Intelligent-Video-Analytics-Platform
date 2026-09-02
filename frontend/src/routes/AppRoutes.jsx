@@ -293,7 +293,6 @@ function AppRoutes() {
         </Route>
 
 <Route
-  path="/live-camera-grid"
   element={
     <RoleProtectedRoute
       allowedRoles={[
@@ -302,10 +301,15 @@ function AppRoutes() {
         "security_sentry",
       ]}
     >
-      <LiveCameraGrid />
+      <DashboardLayout />
     </RoleProtectedRoute>
   }
-/>
+>
+  <Route
+    path="/live-camera-grid"
+    element={<LiveCameraGrid />}
+  />
+</Route>
 
         {/* =====================================================
             FALLBACK

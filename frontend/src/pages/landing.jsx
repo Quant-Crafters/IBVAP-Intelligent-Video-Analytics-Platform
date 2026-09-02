@@ -609,7 +609,7 @@ export default function Landing() {
 
                 <div className="animate-fade-in-5 pt-4">
 
-                  
+
 
                 </div>
 
@@ -771,42 +771,14 @@ export default function Landing() {
 
             <div className="flex flex-wrap gap-6 text-[12px] font-bold text-slate-300">
 
-              <button
-                type="button"
-                onClick={() => handleNavClick("About Us")}
-                className="hover:text-amber-500 transition-colors cursor-pointer"
-              >
-                About System
-              </button>
 
-              <button
-                type="button"
-                onClick={() => handleNavClick("Live Overview")}
-                className="hover:text-amber-500 transition-colors cursor-pointer"
-              >
-                Operations
-              </button>
 
-              <a
-                href="#privacy"
-                className="hover:text-amber-500 transition-colors"
-              >
-                Privacy Policy
-              </a>
 
-              <a
-                href="#terms"
-                className="hover:text-amber-500 transition-colors"
-              >
-                Terms of Use
-              </a>
 
-              <a
-                href="#help"
-                className="hover:text-amber-500 transition-colors"
-              >
-                Help & Support
-              </a>
+
+
+
+
 
             </div>
 

@@ -173,23 +173,86 @@ export default function CameraManagement() {
   }, [cameras]);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/40 text-slate-900">
+      <style>{`
+        @keyframes cameraFadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes cameraFadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes cameraRowIn {
+          from {
+            opacity: 0;
+            transform: translateX(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes cameraPulse {
+          0%,
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+
+          50% {
+            opacity: 0.65;
+            transform: scale(1.15);
+          }
+        }
+
+        .camera-fade-up {
+          animation: cameraFadeUp 0.5s ease-out both;
+        }
+
+        .camera-fade-in {
+          animation: cameraFadeIn 0.4s ease-out both;
+        }
+
+        .camera-row-in {
+          animation: cameraRowIn 0.45s ease-out both;
+        }
+
+        .camera-status-dot {
+          animation: cameraPulse 2s ease-in-out infinite;
+        }
+      `}</style>
+
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:py-10">
 
-        <div className="mb-7 flex items-end justify-between border-b border-slate-300 pb-6">
+        {/* Header */}
+        <div
+          className="camera-fade-up mb-7 flex items-end justify-between border-b border-slate-200 pb-6"
+        >
           <div>
             <button
               type="button"
               onClick={() => navigate("/admin")}
-              className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:text-[#071426]"
+              className="mb-4 inline-flex items-center gap-2 rounded-lg px-1 py-1 text-xs font-bold uppercase tracking-wider text-slate-500 transition-all duration-200 hover:-translate-x-0.5 hover:text-[#071426]"
             >
               <ArrowLeft size={14} />
               Administrator Dashboard
             </button>
 
-            <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em] text-[#b87800]">
-              Administration
-            </p>
+
 
             <h1 className="mt-1 text-3xl font-black tracking-tight text-[#071426]">
               Camera Management
@@ -200,37 +263,52 @@ export default function CameraManagement() {
             </p>
           </div>
 
-          <div className="hidden text-right sm:block">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <div
+            className="hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-cyan-50 px-5 py-3 text-right shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:block"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
               Camera Status
             </p>
 
             <p className="mt-1 text-sm font-semibold text-[#071426]">
-              {summary.total} total · {summary.online} online · {summary.offline} offline
+              {summary.total} total
+              <span className="mx-1 text-slate-300">·</span>
+              <span className="text-emerald-600">
+                {summary.online} online
+              </span>
+              <span className="mx-1 text-slate-300">·</span>
+              <span className="text-red-500">
+                {summary.offline} offline
+              </span>
             </p>
           </div>
         </div>
 
+        {/* Messages */}
         {(errorMessage || successMessage) && (
-          <div className="mb-6">
+          <div className="camera-fade-in mb-6">
             {errorMessage && (
-              <div className="border border-red-200 bg-white px-5 py-4 text-sm text-red-700">
+              <div className="rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-white px-5 py-4 text-sm text-red-700 shadow-sm">
                 {errorMessage}
               </div>
             )}
 
             {successMessage && !errorMessage && (
-              <div className="border border-green-200 bg-white px-5 py-4 text-sm text-green-700">
+              <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-white px-5 py-4 text-sm text-emerald-700 shadow-sm">
                 {successMessage}
               </div>
             )}
           </div>
         )}
 
-        <section className="border border-slate-300 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        {/* Add / Update Camera */}
+        <section
+          className="camera-fade-up overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-[0_12px_35px_rgba(37,99,235,0.08)] transition-all duration-300 hover:shadow-[0_16px_42px_rgba(37,99,235,0.12)]"
+          style={{ animationDelay: "80ms" }}
+        >
+          <div className="flex items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-6 py-4">
             <div>
-              <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#b87800]">
+              <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-blue-600">
                 {editing ? "Update Camera" : "Add Camera"}
               </p>
 
@@ -243,7 +321,7 @@ export default function CameraManagement() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-[#071426]"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:text-[#071426] hover:shadow-md"
               >
                 <X size={14} />
                 Cancel Edit
@@ -269,7 +347,7 @@ export default function CameraManagement() {
                 value={form.name}
                 onChange={handleChange}
                 required
-                className="w-full border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#071426] focus:bg-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-blue-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                 placeholder="Camera 01"
               />
             </div>
@@ -288,7 +366,7 @@ export default function CameraManagement() {
                 value={form.location}
                 onChange={handleChange}
                 required
-                className="w-full border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#071426] focus:bg-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-cyan-200 hover:bg-white focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
                 placeholder="Border Post Alpha"
               />
             </div>
@@ -307,7 +385,7 @@ export default function CameraManagement() {
                 value={form.stream_url}
                 onChange={handleChange}
                 required
-                className="w-full border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#071426] focus:bg-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-violet-200 hover:bg-white focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
                 placeholder="rtsp://..."
               />
             </div>
@@ -326,7 +404,7 @@ export default function CameraManagement() {
                 value={form.status}
                 onChange={handleChange}
                 required
-                className="w-full border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#071426] focus:bg-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all duration-200 hover:border-emerald-200 hover:bg-white focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
               >
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
@@ -337,7 +415,7 @@ export default function CameraManagement() {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center gap-2 bg-[#071426] px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#071426] to-blue-900 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:from-[#0b1d35] hover:to-blue-800 hover:shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400 disabled:from-slate-400 disabled:to-slate-400"
               >
                 {editing ? (
                   <Pencil size={14} />
@@ -355,21 +433,25 @@ export default function CameraManagement() {
           </form>
         </section>
 
-        <section className="mt-6 border border-slate-300 bg-white">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#b87800]">
+        {/* Registered Cameras */}
+        <section
+          className="camera-fade-up mt-6 overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-[0_12px_35px_rgba(124,58,237,0.07)] transition-all duration-300 hover:shadow-[0_16px_42px_rgba(124,58,237,0.10)]"
+          style={{ animationDelay: "160ms" }}
+        >
+          <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50 via-white to-blue-50 px-6 py-4">
+            <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-violet-600">
               Registered Cameras
             </p>
           </div>
 
           {loading ? (
-            <div className="px-6 py-12 text-center">
+            <div className="camera-fade-in px-6 py-12 text-center">
               <p className="text-xs font-mono uppercase tracking-wider text-slate-400">
                 Loading cameras...
               </p>
             </div>
           ) : cameras.length === 0 ? (
-            <div className="px-6 py-12 text-center">
+            <div className="camera-fade-in px-6 py-12 text-center">
               <p className="text-sm font-bold text-slate-600">
                 No cameras registered
               </p>
@@ -379,23 +461,26 @@ export default function CameraManagement() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-200">
-              {cameras.map((camera) => {
+            <div className="divide-y divide-slate-100">
+              {cameras.map((camera, index) => {
                 const online =
                   String(camera.status || "").toLowerCase() === "online";
 
                 return (
                   <div
                     key={camera.id}
-                    className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"
+                    className="camera-row-in group flex flex-col gap-4 px-6 py-5 transition-all duration-300 hover:bg-gradient-to-r hover:from-blue-50/40 hover:via-white hover:to-violet-50/30 lg:flex-row lg:items-center lg:justify-between"
+                    style={{
+                      animationDelay: `${index * 70}ms`,
+                    }}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-3">
-                        <p className="text-sm font-black text-[#071426]">
+                        <p className="text-sm font-black text-[#071426] transition-colors duration-200 group-hover:text-blue-700">
                           {camera.name}
                         </p>
 
-                        <span className="text-[10px] font-mono text-slate-400">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-mono text-slate-400 transition-colors duration-200 group-hover:bg-slate-200">
                           ID {camera.id}
                         </span>
                       </div>
@@ -411,19 +496,25 @@ export default function CameraManagement() {
 
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ring-1 ${
                           online
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-700"
+                            ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                            : "bg-red-50 text-red-700 ring-red-100"
                         }`}
                       >
+                        <span
+                          className={`camera-status-dot h-1.5 w-1.5 rounded-full ${
+                            online ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        />
+
                         {camera.status || "unknown"}
                       </span>
 
                       <button
                         type="button"
                         onClick={() => startEdit(camera)}
-                        className="inline-flex items-center gap-1.5 border border-slate-300 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:border-[#071426] hover:text-[#071426]"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:shadow-md"
                       >
                         <Pencil size={13} />
                         Edit
@@ -433,10 +524,12 @@ export default function CameraManagement() {
                         type="button"
                         onClick={() => handleDelete(camera)}
                         disabled={deletingId === camera.id}
-                        className="inline-flex items-center gap-1.5 border border-red-200 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Trash2 size={13} />
-                        {deletingId === camera.id ? "Removing..." : "Remove"}
+                        {deletingId === camera.id
+                          ? "Removing..."
+                          : "Remove"}
                       </button>
                     </div>
                   </div>
@@ -445,7 +538,6 @@ export default function CameraManagement() {
             </div>
           )}
         </section>
-
       </div>
     </div>
   );
