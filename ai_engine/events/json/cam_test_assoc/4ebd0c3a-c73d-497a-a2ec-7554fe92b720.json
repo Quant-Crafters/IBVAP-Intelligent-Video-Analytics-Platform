@@ -1,0 +1,36 @@
+{
+    "event_id": "4ebd0c3a-c73d-497a-a2ec-7554fe92b720",
+    "camera_id": "cam_test_assoc",
+    "timestamp": "2026-08-30T21:22:20.500046+05:30",
+    "event_type": "PERSON_ZONE_BREACH",
+    "severity": "MEDIUM",
+    "threat_score": 40,
+    "person_id": 102,
+    "vehicle_id": 42,
+    "detection_data": {
+        "person_bbox": [
+            110,
+            110,
+            160,
+            240
+        ],
+        "vehicle_bbox": [
+            100,
+            100,
+            300,
+            300
+        ],
+        "zone_status": null,
+        "object_detected": false,
+        "object_name": null,
+        "object_confidence": 0.0,
+        "carried_object": false,
+        "vehicle_present": true,
+        "vehicle_type": "car",
+        "plate_number": "KA01AB1234",
+        "plate_country": "INDIA",
+        "plate_confidence": 0.92
+    },
+    "evidence_image": null,
+    "incident_clip": null
+}

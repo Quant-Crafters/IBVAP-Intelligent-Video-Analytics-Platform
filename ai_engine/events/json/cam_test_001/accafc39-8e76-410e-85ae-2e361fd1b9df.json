@@ -1,0 +1,31 @@
+{
+    "event_id": "accafc39-8e76-410e-85ae-2e361fd1b9df",
+    "camera_id": "cam_test_001",
+    "timestamp": "2026-08-30T21:22:31.268193+05:30",
+    "event_type": "PERSON_ZONE_BREACH",
+    "severity": "HIGH",
+    "threat_score": 75,
+    "person_id": 1,
+    "vehicle_id": null,
+    "detection_data": {
+        "person_bbox": [
+            10,
+            10,
+            50,
+            50
+        ],
+        "vehicle_bbox": null,
+        "zone_status": null,
+        "object_detected": false,
+        "object_name": null,
+        "object_confidence": 0.0,
+        "carried_object": false,
+        "vehicle_present": false,
+        "vehicle_type": null,
+        "plate_number": null,
+        "plate_country": null,
+        "plate_confidence": 0.0
+    },
+    "evidence_image": null,
+    "incident_clip": null
+}
