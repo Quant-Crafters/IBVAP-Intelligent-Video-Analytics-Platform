@@ -1,0 +1,31 @@
+{
+    "event_id": "3e68a3c9-31f1-496d-a902-27d0d4778a68",
+    "camera_id": "default_camera",
+    "timestamp": "2026-09-02T22:32:40.843749+05:30",
+    "event_type": "DWELL_TIME",
+    "severity": "HIGH",
+    "threat_score": 60,
+    "person_id": 1,
+    "vehicle_id": null,
+    "detection_data": {
+        "person_bbox": [
+            187,
+            119,
+            579,
+            477
+        ],
+        "vehicle_bbox": null,
+        "zone_status": "BREACH",
+        "object_detected": false,
+        "object_name": null,
+        "object_confidence": 0.0,
+        "carried_object": false,
+        "vehicle_present": false,
+        "vehicle_type": null,
+        "plate_number": null,
+        "plate_country": null,
+        "plate_confidence": 0.0
+    },
+    "evidence_image": "events/evidence/default_camera/3e68a3c9-31f1-496d-a902-27d0d4778a68.jpg",
+    "incident_clip": "events/clips/default_camera/3e68a3c9-31f1-496d-a902-27d0d4778a68.mp4"
+}

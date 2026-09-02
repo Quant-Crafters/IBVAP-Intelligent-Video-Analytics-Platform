@@ -1,0 +1,31 @@
+{
+    "event_id": "0af1657f-edac-4958-8586-d104cc79d7c2",
+    "camera_id": "cam_test_002",
+    "timestamp": "2026-08-30T21:22:31.269276+05:30",
+    "event_type": "CARRIED_OBJECT",
+    "severity": "MEDIUM",
+    "threat_score": 45,
+    "person_id": 2,
+    "vehicle_id": null,
+    "detection_data": {
+        "person_bbox": [
+            20,
+            20,
+            60,
+            60
+        ],
+        "vehicle_bbox": null,
+        "zone_status": null,
+        "object_detected": true,
+        "object_name": "backpack",
+        "object_confidence": 0.0,
+        "carried_object": true,
+        "vehicle_present": false,
+        "vehicle_type": null,
+        "plate_number": null,
+        "plate_country": null,
+        "plate_confidence": 0.0
+    },
+    "evidence_image": null,
+    "incident_clip": null
+}

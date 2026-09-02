@@ -10,8 +10,11 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler) {
 
 	evidence := router.Group("/evidence")
 	{
-		// Create/upload evidence
+		// Create evidence record using JSON
 		evidence.POST("/", handler.Create)
+
+		// Upload actual evidence file (image/video)
+		evidence.POST("/upload", handler.Upload)
 
 		// Get all evidence
 		evidence.GET("/", handler.GetAll)

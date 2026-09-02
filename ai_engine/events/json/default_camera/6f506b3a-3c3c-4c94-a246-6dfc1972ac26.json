@@ -1,0 +1,31 @@
+{
+    "event_id": "6f506b3a-3c3c-4c94-a246-6dfc1972ac26",
+    "camera_id": "default_camera",
+    "timestamp": "2026-09-02T22:49:41.025492+05:30",
+    "event_type": "PERSON_ZONE_BREACH",
+    "severity": "MEDIUM",
+    "threat_score": 45,
+    "person_id": 10,
+    "vehicle_id": null,
+    "detection_data": {
+        "person_bbox": [
+            346,
+            238,
+            639,
+            475
+        ],
+        "vehicle_bbox": null,
+        "zone_status": "BREACH",
+        "object_detected": false,
+        "object_name": null,
+        "object_confidence": 0.0,
+        "carried_object": false,
+        "vehicle_present": false,
+        "vehicle_type": null,
+        "plate_number": null,
+        "plate_country": null,
+        "plate_confidence": 0.0
+    },
+    "evidence_image": "events/evidence/default_camera/6f506b3a-3c3c-4c94-a246-6dfc1972ac26.jpg",
+    "incident_clip": "events/clips/default_camera/6f506b3a-3c3c-4c94-a246-6dfc1972ac26.mp4"
+}
