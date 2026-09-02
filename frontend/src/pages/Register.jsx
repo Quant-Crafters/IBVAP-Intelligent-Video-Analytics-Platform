@@ -182,13 +182,7 @@ export default function Register() {
           {/* BRAND */}
           <div className="flex items-center gap-3">
 
-            <div className="w-11 h-11 border border-amber-500/60 bg-[#0b192c]/80 flex items-center justify-center">
-              <Shield
-                size={23}
-                className="text-amber-400"
-                strokeWidth={1.8}
-              />
-            </div>
+
 
             <div>
               <h1 className="font-black tracking-wide text-xl">
@@ -205,15 +199,7 @@ export default function Register() {
           {/* MESSAGE */}
           <div className="max-w-xl">
 
-            <div className="inline-flex items-center gap-2 border border-amber-500/40 bg-black/30 backdrop-blur-sm px-3 py-1.5 mb-6">
 
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300">
-                Secure Access Request
-              </span>
-
-            </div>
 
             <h2 className="text-4xl xl:text-6xl font-black leading-[1.05] tracking-tight">
               Choose your
@@ -276,7 +262,7 @@ export default function Register() {
               </p>
 
               <h2 className="mt-2 text-2xl font-black text-white tracking-tight">
-                Request Clearance ID
+                REGISTER YOUR ROLE
               </h2>
 
               <p className="mt-1 text-xs text-slate-400">
@@ -622,7 +608,7 @@ export default function Register() {
                     Creating Secure Profile
                   </span>
                 ) : (
-                  "Submit Access Request"
+                  "REGISTER"
                 )}
 
               </button>

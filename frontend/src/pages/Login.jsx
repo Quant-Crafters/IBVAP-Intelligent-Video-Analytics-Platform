@@ -150,12 +150,7 @@ if (role === "administrator") {
           <div>
             <div className="flex items-center gap-3">
 
-              <div className="w-11 h-11 border border-amber-500/60 bg-[#0b192c]/80 flex items-center justify-center">
-                <ShieldCheck
-                  size={23}
-                  className="text-amber-400"
-                />
-              </div>
+
 
               <div>
                 <h1 className="font-black tracking-wide text-xl">
@@ -174,15 +169,7 @@ if (role === "administrator") {
 
           <div className="max-w-xl">
 
-            <div className="inline-flex items-center gap-2 border border-amber-500/40 bg-black/30 backdrop-blur-sm px-3 py-1.5 mb-6">
 
-              <span className="h-2 w-2 rounded-full bg-green-400" />
-
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300">
-                Secure Operations Portal
-              </span>
-
-            </div>
 
             <h2 className="text-4xl xl:text-6xl font-black leading-[1.05] tracking-tight">
 
@@ -366,7 +353,7 @@ if (role === "administrator") {
                 Authenticate & Enter
               </button>
 
-              {/* REGISTER */}
+              {/* REGISTER*/}
 
               <div className="mt-6 pt-6 border-t border-slate-200 text-center">
 
@@ -378,7 +365,7 @@ if (role === "administrator") {
                   to="/register"
                   className="inline-block mt-1 text-xs font-black uppercase tracking-wider text-[#0b192c] hover:text-amber-700 transition-colors"
                 >
-                  Request Clearance ID
+                  REGISTER
                 </Link>
 
               </div>
