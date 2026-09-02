@@ -59,6 +59,30 @@ func toEventResponse(event *Event) *EventResponse {
 		Severity:  event.Severity,
 		Message:   event.Message,
 		Timestamp: event.Timestamp,
+
+		ExternalEventID: event.ExternalEventID,
+		Confidence:      event.Confidence,
+
+		PersonID:  event.PersonID,
+		VehicleID: event.VehicleID,
+
+		ZoneStatus: event.ZoneStatus,
+
+		ObjectName:    event.ObjectName,
+		CarriedObject: event.CarriedObject,
+
+		VehiclePresent: event.VehiclePresent,
+		VehicleType:    event.VehicleType,
+
+		PlateNumber:     event.PlateNumber,
+		PlateCountry:    event.PlateCountry,
+		PlateConfidence: event.PlateConfidence,
+
+		ThreatScore: event.ThreatScore,
+		ThreatLevel: event.ThreatLevel,
+
+		EvidenceImage: event.EvidenceImage,
+		IncidentClip:  event.IncidentClip,
 	}
 }
 
@@ -70,6 +94,30 @@ func (s *Service) Create(req CreateEventRequest) (*EventResponse, error) {
 		Severity:  req.Severity,
 		Message:   req.Message,
 		Timestamp: req.Timestamp,
+
+		ExternalEventID: req.ExternalEventID,
+		Confidence:      req.Confidence,
+
+		PersonID:  req.PersonID,
+		VehicleID: req.VehicleID,
+
+		ZoneStatus: req.ZoneStatus,
+
+		ObjectName:    req.ObjectName,
+		CarriedObject: req.CarriedObject,
+
+		VehiclePresent: req.VehiclePresent,
+		VehicleType:    req.VehicleType,
+
+		PlateNumber:     req.PlateNumber,
+		PlateCountry:    req.PlateCountry,
+		PlateConfidence: req.PlateConfidence,
+
+		ThreatScore: req.ThreatScore,
+		ThreatLevel: req.ThreatLevel,
+
+		EvidenceImage: req.EvidenceImage,
+		IncidentClip:  req.IncidentClip,
 	}
 
 	if err := s.repository.Create(event); err != nil {

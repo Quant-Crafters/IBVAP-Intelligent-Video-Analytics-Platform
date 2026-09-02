@@ -8,6 +8,7 @@ import (
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/camera"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/event"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/zone"
+	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/evidence"
 
 	"gorm.io/gorm"
 )
@@ -19,6 +20,7 @@ func Migrate(db *gorm.DB) error {
 		&alert.Alert{},
 		&zone.Zone{},
 		&event.Event{},
+		&evidence.Evidence{},
 	); err != nil {
 		return fmt.Errorf("database migration failed: %w", err)
 	}
