@@ -2,6 +2,7 @@ package evidence
 
 import (
 	"errors"
+	"path/filepath"
 
 	"gorm.io/gorm"
 )
@@ -14,6 +15,24 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{
 		db: db,
 	}
+}
+
+// UpdateEventEvidencePath updates only the specific evidence field (evidence_image OR incident_clip) on the linked event.
+func (r *Repository) UpdateEventEvidencePath(eventID uint, evidenceType EvidenceType, path string) error {
+	if r.db == nil || eventID == 0 {
+		return nil
+	}
+	cleanPath := filepath.ToSlash(path)
+	updates := map[string]interface{}{}
+	switch evidenceType {
+	case EvidenceTypeImage, EvidenceTypeScreenshot:
+		updates["evidence_image"] = cleanPath
+	case EvidenceTypeVideo:
+		updates["incident_clip"] = cleanPath
+	default:
+		return nil
+	}
+	return r.db.Table("events").Where("id = ?", eventID).Updates(updates).Error
 }
 
 // Create inserts a new evidence record into the database.

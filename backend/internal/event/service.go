@@ -3,7 +3,9 @@ package event
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/alert"
 	"gorm.io/gorm"
 )
 
@@ -11,11 +13,13 @@ var ErrEventNotFound = errors.New("event not found")
 
 type Service struct {
 	repository *Repository
+	alertRepo  *alert.Repository
 }
 
-func NewService(repository *Repository) *Service {
+func NewService(repository *Repository, alertRepo *alert.Repository) *Service {
 	return &Service{
 		repository: repository,
+		alertRepo:  alertRepo,
 	}
 }
 
@@ -124,5 +128,45 @@ func (s *Service) Create(req CreateEventRequest) (*EventResponse, error) {
 		return nil, fmt.Errorf("creating event: %w", err)
 	}
 
+	if s.alertRepo != nil {
+		sev := strings.ToLower(req.Severity)
+		if sev == "" {
+			sev = strings.ToLower(req.ThreatLevel)
+		}
+		if sev == "" || (sev != "low" && sev != "medium" && sev != "high" && sev != "critical") {
+			sev = "medium"
+		}
+		conf := float64(req.ThreatScore)
+		if conf == 0 && req.Confidence > 0 {
+			conf = req.Confidence
+		}
+		evidence := req.EvidenceImage
+		if evidence == "" {
+			evidence = req.IncidentClip
+		}
+		newAlert := &alert.Alert{
+			CameraID:   req.CameraID,
+			Type:       req.Type,
+			Severity:   sev,
+			Confidence: conf,
+			Timestamp:  req.Timestamp,
+			Status:     "active",
+			Evidence:   evidence,
+		}
+		_ = s.alertRepo.Create(newAlert)
+	}
+
 	return toEventResponse(event), nil
+}
+
+func (s *Service) ClearAll() (int64, int64, error) {
+	eventsCleared, err := s.repository.ClearAll()
+	if err != nil {
+		return 0, 0, err
+	}
+	var alertsCleared int64
+	if s.alertRepo != nil {
+		alertsCleared, _ = s.alertRepo.ClearAll()
+	}
+	return eventsCleared, alertsCleared, nil
 }

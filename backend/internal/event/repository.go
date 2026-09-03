@@ -76,3 +76,8 @@ func (r *Repository) FindByID(id uint) (*Event, error) {
 func (r *Repository) Create(event *Event) error {
 	return r.db.Create(event).Error
 }
+
+func (r *Repository) ClearAll() (int64, error) {
+	result := r.db.Exec("DELETE FROM events")
+	return result.RowsAffected, result.Error
+}

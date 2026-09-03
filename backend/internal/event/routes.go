@@ -19,6 +19,9 @@ func RegisterRoutes(
 		// Get event history with optional filters.
 		events.GET("", handler.GetAll)
 
+		// Clear test events and alerts.
+		events.DELETE("/clear", handler.Clear)
+
 		// Get a single event by ID.
 		events.GET("/:id", handler.GetByID)
 	}

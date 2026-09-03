@@ -2,20 +2,39 @@ package zone
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 
+	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/ai"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service *Service
+	service  *Service
+	aiClient *ai.Client
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service *Service, aiClient *ai.Client) *Handler {
 	return &Handler{
-		service: service,
+		service:  service,
+		aiClient: aiClient,
 	}
+}
+
+func (h *Handler) sync(c *gin.Context, zone *ZoneResponse) bool {
+	if zone.Type != "restricted_zone" && zone.Type != "polygon" {
+		return true
+	}
+	points := make([][]int, 0, len(zone.Coordinates))
+	for _, point := range zone.Coordinates {
+		points = append(points, []int{int(math.Round(point.X)), int(math.Round(point.Y))})
+	}
+	if err := h.aiClient.UpdateZone(c.Request.Context(), strconv.FormatUint(uint64(zone.CameraID), 10), points); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "zone persisted but could not be applied to the AI worker: " + err.Error()})
+		return false
+	}
+	return true
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -46,6 +65,9 @@ func (h *Handler) Create(c *gin.Context) {
 		}
 		return
 	}
+	if !h.sync(c, zone) {
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "zone created successfully",
@@ -61,7 +83,6 @@ func (h *Handler) GetAll(c *gin.Context) {
 		})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"zones": zones,
 	})
@@ -135,6 +156,10 @@ func (h *Handler) Update(c *gin.Context) {
 				"error": "failed to update zone",
 			})
 		}
+		return
+	}
+
+	if !h.sync(c, zone) {
 		return
 	}
 

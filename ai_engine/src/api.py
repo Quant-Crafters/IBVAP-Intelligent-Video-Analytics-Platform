@@ -1,4 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, status
+from fastapi.responses import StreamingResponse
+import cv2
+import time
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 from datetime import datetime
@@ -6,9 +9,11 @@ from datetime import datetime
 try:
     from config import settings
     from camera_manager import get_camera_manager
+    from camera_worker import parse_capture_source
 except ImportError:
     from src.config import settings
     from src.camera_manager import get_camera_manager
+    from src.camera_worker import parse_capture_source
 
 app = FastAPI(
     title="IBVAP AI Engine Service",
@@ -59,6 +64,24 @@ class CameraConfigRequest(BaseModel):
 
 class CameraZoneRequest(BaseModel):
     zone: List[List[int]] = Field(..., example=[[120, 100], [500, 100], [550, 400], [100, 400]])
+
+
+def mjpeg_frames(camera_id: str):
+    """Yield processed worker frames as a browser-compatible MJPEG stream."""
+    cid = str(camera_id)
+    while True:
+        worker = camera_manager.workers.get(cid)
+        if worker is None:
+            return
+        frame = worker.get_latest_jpeg()
+        if frame:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n" +
+                frame + b"\r\n"
+            )
+        time.sleep(0.05)
 
 
 # -----------------------------------------------------------------------------
@@ -196,3 +219,34 @@ def get_camera(camera_id: str):
         return camera_manager.get_camera_status(camera_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Camera '{camera_id}' not found")
+
+
+@app.post("/api/v1/cameras/test", dependencies=[Depends(verify_token)])
+def test_camera(req: CameraStartRequest):
+    """Test a capture connection without starting a worker."""
+    import os
+    source = parse_capture_source(req.stream_url)
+    if isinstance(source, int):
+        capture = cv2.VideoCapture(source, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(source)
+    else:
+        capture = cv2.VideoCapture(source)
+    try:
+        if not capture.isOpened():
+            raise HTTPException(status_code=422, detail="Unable to open camera stream")
+        ok, _ = capture.read()
+        if not ok:
+            raise HTTPException(status_code=422, detail="Camera opened but did not provide a frame")
+        return {"message": "Camera connection successful"}
+    finally:
+        capture.release()
+
+
+@app.get("/api/v1/cameras/{camera_id}/stream", dependencies=[Depends(verify_token)])
+def stream_camera(camera_id: str):
+    if camera_id not in camera_manager.workers:
+        raise HTTPException(status_code=404, detail=f"Camera '{camera_id}' not found")
+    return StreamingResponse(
+        mjpeg_frames(camera_id),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-cache, no-store"},
+    )

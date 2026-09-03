@@ -319,7 +319,8 @@ export default function Analytics() {
   ======================================================= */
 
   useEffect(() => {
-    loadAnalytics();
+    const initialLoad = window.setTimeout(() => loadAnalytics(), 0);
+    return () => window.clearTimeout(initialLoad);
   }, [loadAnalytics]);
 
 

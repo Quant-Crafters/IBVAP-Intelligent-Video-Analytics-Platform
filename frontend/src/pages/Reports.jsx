@@ -351,7 +351,8 @@ export default function Reports() {
   ======================================================= */
 
   useEffect(() => {
-    loadReportData();
+    const initialLoad = window.setTimeout(() => loadReportData(), 0);
+    return () => window.clearTimeout(initialLoad);
   }, [loadReportData]);
 
 

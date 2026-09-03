@@ -243,7 +243,7 @@ def find_associated_vehicle(person_bbox, confirmed_vehicles, min_score=0.25):
     Considers bounding box overlap ratio, feet-to-vehicle containment margin, and normalized center distance.
     Returns associated vehicle dictionary or None if no score meets min_score threshold.
     """
-    if not person_bbox or not confirmed_vehicles:
+    if person_bbox is None or len(person_bbox) == 0 or not confirmed_vehicles:
         return None
 
     px1, py1, px2, py2 = person_bbox

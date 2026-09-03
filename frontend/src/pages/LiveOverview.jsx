@@ -203,6 +203,7 @@ function KpiCard({
 }
 
 
+
 /* =========================================================
    MAIN COMPONENT
 ========================================================= */
@@ -223,11 +224,11 @@ export default function LiveOverview() {
   ======================================================= */
 
   const loadData = useCallback(
-    async (manual = false) => {
+    async (manual = false, isInitial = false) => {
       try {
         if (manual) {
           setRefreshing(true);
-        } else {
+        } else if (isInitial) {
           setLoading(true);
         }
 
@@ -284,13 +285,14 @@ export default function LiveOverview() {
   ======================================================= */
 
   useEffect(() => {
-    loadData();
+    const initialLoad = window.setTimeout(() => loadData(false, true), 0);
 
     const interval = setInterval(() => {
-      loadData(false);
+      loadData(false, false);
     }, 5000);
 
     return () => {
+      window.clearTimeout(initialLoad);
       clearInterval(interval);
     };
   }, [loadData]);
@@ -302,10 +304,7 @@ export default function LiveOverview() {
 
   const onlineCameras = useMemo(() => {
     return cameras.filter((camera) => {
-      const status = String(
-        camera?.status || ""
-      ).toLowerCase();
-
+      const status = String(camera?.status || "").toLowerCase();
       return (
         status === "online" ||
         status === "active" ||
@@ -314,24 +313,12 @@ export default function LiveOverview() {
     }).length;
   }, [cameras]);
 
-
-  /* =======================================================
-     ACTIVE ALERTS
-  ======================================================= */
-
   const activeAlerts = useMemo(() => {
     return alerts.filter((alert) => {
-      return (
-        String(alert?.status || "")
-          .toLowerCase() === "active"
-      );
+      const st = String(alert?.status || "").toLowerCase();
+      return st === "active" || st === "new" || st === "escalated";
     });
   }, [alerts]);
-
-
-  /* =======================================================
-     RECENT EVENTS
-  ======================================================= */
 
   const recentEvents = useMemo(() => {
     return [...events]

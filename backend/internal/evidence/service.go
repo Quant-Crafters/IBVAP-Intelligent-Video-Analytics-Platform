@@ -3,6 +3,7 @@ package evidence
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ func (s *Service) Create(req CreateEvidenceRequest) (*EvidenceResponse, error) {
 	req.Type = EvidenceType(
 		strings.ToLower(strings.TrimSpace(string(req.Type))),
 	)
-	req.FilePath = strings.TrimSpace(req.FilePath)
+	req.FilePath = filepath.ToSlash(strings.TrimSpace(req.FilePath))
 	req.FileName = strings.TrimSpace(req.FileName)
 	req.MimeType = strings.ToLower(strings.TrimSpace(req.MimeType))
 
@@ -103,6 +104,10 @@ func (s *Service) Create(req CreateEvidenceRequest) (*EvidenceResponse, error) {
 
 	if err := s.repository.Create(evidence); err != nil {
 		return nil, fmt.Errorf("creating evidence: %w", err)
+	}
+
+	if req.EventID != nil && *req.EventID > 0 {
+		_ = s.repository.UpdateEventEvidencePath(*req.EventID, req.Type, req.FilePath)
 	}
 
 	return toEvidenceResponse(evidence), nil

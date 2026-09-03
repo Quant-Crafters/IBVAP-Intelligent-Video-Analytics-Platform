@@ -1,43 +1,24 @@
 import React, { useMemo, useState } from "react";
 import { Camera, Maximize2, VideoOff } from "lucide-react";
+import { liveStreamUrl } from "../../services/api";
 
 /*
  * Reusable camera-grid UI.
  *
- * This component intentionally does not change any existing role page.
- * It receives cameras from the caller and can later be mounted by:
- * - Security Sentry
- * - Post Commander
- * - Administrator
- *
- * Browser note:
- * RTSP streams are not directly playable by normal browser <video>
- * elements. HTTP/HLS-compatible URLs can be rendered here; RTSP
- * requires a backend/AI media gateway or browser-compatible stream.
+ * Surfacing live MJPEG feeds via the backend proxy (/api/cameras/:id/live).
  */
-
-function isBrowserPlayableStream(url) {
-  const value = String(url || "").trim().toLowerCase();
-
-  if (!value) return false;
-
-  return (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("blob:")
-  );
-}
 
 function CameraCard({ camera }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
-  const playable = isBrowserPlayableStream(camera?.stream_url);
   const status = String(camera?.status || "offline").toLowerCase();
   const online =
     status === "online" ||
     status === "active" ||
     status === "running";
+
+  const streamURL = camera?.id ? liveStreamUrl(camera.id) : null;
 
   const openFullscreen = (event) => {
     event.stopPropagation();
@@ -53,13 +34,10 @@ function CameraCard({ camera }) {
       <article className="overflow-hidden border border-slate-300 bg-white shadow-sm">
         <div className="relative aspect-video bg-[#071426]">
 
-          {playable && !videoFailed ? (
-            <video
-              src={camera.stream_url}
-              autoPlay
-              muted
-              playsInline
-              controls={false}
+          {online && streamURL && !videoFailed ? (
+            <img
+              src={streamURL}
+              alt={camera?.name || `Camera ${camera?.id ?? "—"}`}
               onError={() => setVideoFailed(true)}
               className="absolute inset-0 h-full w-full object-cover"
             />
@@ -72,9 +50,9 @@ function CameraCard({ camera }) {
               </p>
 
               <p className="mt-2 max-w-xs text-[10px] leading-5 text-slate-400">
-                {camera?.stream_url
-                  ? "The registered stream is not directly playable in the browser. Use a browser-compatible media stream or media gateway."
-                  : "No stream URL is registered for this camera."}
+                {online
+                  ? "Live MJPEG stream could not be loaded from backend proxy."
+                  : "This camera is currently offline."}
               </p>
             </div>
           )}
@@ -163,13 +141,10 @@ function CameraCard({ camera }) {
             </div>
 
             <div className="aspect-video bg-[#071426]">
-              {playable && !videoFailed ? (
-                <video
-                  src={camera.stream_url}
-                  autoPlay
-                  muted
-                  playsInline
-                  controls
+              {online && streamURL && !videoFailed ? (
+                <img
+                  src={streamURL}
+                  alt={camera?.name || `Camera ${camera?.id ?? "—"}`}
                   onError={() => setVideoFailed(true)}
                   className="h-full w-full object-contain"
                 />
@@ -186,8 +161,9 @@ function CameraCard({ camera }) {
                     </p>
 
                     <p className="mt-2 text-xs leading-5 text-slate-400">
-                      {camera?.stream_url ||
-                        "No stream URL available"}
+                      {online
+                        ? "Live MJPEG stream unavailable."
+                        : "Camera is offline."}
                     </p>
                   </div>
                 </div>

@@ -20,7 +20,9 @@ type Config struct {
 
 	JWTSecret string
 
-	UploadDir string
+	UploadDir      string
+	AIServiceURL   string
+	AIServiceToken string
 
 	AllowedOrigins []string
 }
@@ -42,7 +44,9 @@ func Load() (*Config, error) {
 
 		JWTSecret: getEnv("JWT_SECRET", ""),
 
-		UploadDir: getEnv("UPLOAD_DIR", "uploads"),
+		UploadDir:      getEnv("UPLOAD_DIR", "uploads"),
+		AIServiceURL:   getEnv("AI_SERVICE_URL", "http://localhost:8001"),
+		AIServiceToken: getEnv("AI_SERVICE_TOKEN", ""),
 
 		AllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
 	}
@@ -66,12 +70,13 @@ func getEnv(key, defaultValue string) string {
 
 func (c *Config) validate() error {
 	required := map[string]string{
-		"DB_HOST":     c.DBHost,
-		"DB_PORT":     c.DBPort,
-		"DB_USER":     c.DBUser,
-		"DB_PASSWORD": c.DBPassword,
-		"DB_NAME":     c.DBName,
-		"JWT_SECRET":  c.JWTSecret,
+		"DB_HOST":          c.DBHost,
+		"DB_PORT":          c.DBPort,
+		"DB_USER":          c.DBUser,
+		"DB_PASSWORD":      c.DBPassword,
+		"DB_NAME":          c.DBName,
+		"JWT_SECRET":       c.JWTSecret,
+		"AI_SERVICE_TOKEN": c.AIServiceToken,
 	}
 
 	for key, value := range required {

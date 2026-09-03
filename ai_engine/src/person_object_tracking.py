@@ -249,6 +249,8 @@ def boxes_overlap(box_a, box_b):
 
 
 def bbox_overlaps_zone(bbox, zone_points, min_overlap_ratio=0.15):
+    if zone_points is None or len(zone_points) < 3:
+        return False
     x1, y1, x2, y2 = bbox
     box_w = max(1, x2 - x1)
     box_h = max(1, y2 - y1)

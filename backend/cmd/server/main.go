@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/config"
+	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/ai"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/alert"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/audit"
 	"github.com/Quant-Crafters/IBVAP-Intelligent-Video-Analytics-Platform/internal/auth"
@@ -110,6 +111,7 @@ func main() {
 
 	eventService := event.NewService(
 		eventRepository,
+		alertRepository,
 	)
 
 	auditService := audit.NewService(
@@ -132,13 +134,10 @@ func main() {
 		userService,
 	)
 
-	cameraHandler := camera.NewHandler(
-		cameraService,
-	)
+	aiClient := ai.NewClient(cfg.AIServiceURL, cfg.AIServiceToken)
+	cameraHandler := camera.NewHandler(cameraService, aiClient)
 
-	zoneHandler := zone.NewHandler(
-		zoneService,
-	)
+	zoneHandler := zone.NewHandler(zoneService, aiClient)
 
 	alertHandler := alert.NewHandler(
 		alertService,
@@ -181,6 +180,7 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware(cfg.AllowedOrigins))
+	router.Static("/uploads", cfg.UploadDir)
 
 	// ---------------------------------------------------------
 	// Health check

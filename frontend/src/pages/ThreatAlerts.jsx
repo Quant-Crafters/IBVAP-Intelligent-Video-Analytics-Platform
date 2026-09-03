@@ -120,6 +120,14 @@ function formatTimestamp(value) {
   return date.toLocaleString();
 }
 
+function formatConfidence(val) {
+  if (val === undefined || val === null || val === "") return "—";
+  const num = Number(val);
+  if (Number.isNaN(num)) return "—";
+  const pct = num > 0 && num <= 1.0 ? num * 100 : num;
+  return `${pct.toFixed(1)}%`;
+}
+
 
 /* =========================================================
    SUMMARY CARD
@@ -248,11 +256,11 @@ export default function ThreatAlerts() {
   ======================================================= */
 
   const loadAlerts = useCallback(
-    async (manual = false) => {
+    async (manual = false, isInitial = false) => {
       try {
         if (manual) {
           setRefreshing(true);
-        } else {
+        } else if (isInitial) {
           setLoading(true);
         }
 
@@ -289,14 +297,16 @@ export default function ThreatAlerts() {
   ======================================================= */
 
   useEffect(() => {
-    loadAlerts();
+    const initialLoad = window.setTimeout(() => loadAlerts(false, true), 0);
 
     const interval = setInterval(() => {
-      loadAlerts(false);
+      loadAlerts(false, false);
     }, 5000);
 
-    return () =>
+    return () => {
+      window.clearTimeout(initialLoad);
       clearInterval(interval);
+    };
   }, [loadAlerts]);
 
 
@@ -346,14 +356,10 @@ export default function ThreatAlerts() {
      SUMMARY
   ======================================================= */
 
-  const activeCount =
-    alerts.filter(
-      (alert) =>
-        String(
-          alert.status || ""
-        ).toLowerCase() ===
-        "active"
-    ).length;
+  const activeCount = alerts.filter((alert) => {
+    const st = String(alert?.status || "").toLowerCase();
+    return st === "active" || st === "new" || st === "escalated";
+  }).length;
 
   const criticalCount =
     alerts.filter(
@@ -837,13 +843,7 @@ export default function ThreatAlerts() {
                           <td className="px-5 py-4">
 
                             <span className="font-mono text-xs font-semibold text-slate-600">
-                              {typeof alert.confidence ===
-                              "number"
-                                ? `${(
-                                    alert.confidence *
-                                    100
-                                  ).toFixed(1)}%`
-                                : "—"}
+                              {formatConfidence(alert.confidence ?? alert.threat_score)}
                             </span>
 
                           </td>

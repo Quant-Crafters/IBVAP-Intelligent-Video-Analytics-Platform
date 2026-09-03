@@ -109,3 +109,20 @@ func (h *Handler) Create(c *gin.Context) {
 		"event":   event,
 	})
 }
+
+// Clear removes all test events and alerts from PostgreSQL.
+func (h *Handler) Clear(c *gin.Context) {
+	eventsCleared, alertsCleared, err := h.service.ClearAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to clear events and alerts: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "all test events and alerts cleared successfully",
+		"events_cleared": eventsCleared,
+		"alerts_cleared": alertsCleared,
+	})
+}

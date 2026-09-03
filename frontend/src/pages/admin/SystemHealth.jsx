@@ -80,14 +80,14 @@ export default function SystemHealth() {
       return;
     }
 
-    loadSystemHealth();
+    const initialLoad = window.setTimeout(() => loadSystemHealth(), 0);
 
     const interval = window.setInterval(
       loadSystemHealth,
       REFRESH_INTERVAL
     );
 
-    return () => window.clearInterval(interval);
+    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); };
   }, [navigate, loadSystemHealth]);
 
   const handleRefresh = () => {

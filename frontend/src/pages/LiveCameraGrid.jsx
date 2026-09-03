@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "../services/api";
+import { apiRequest, getZones, liveStreamUrl, saveRestrictedZone } from "../services/api";
 
 function getCameraName(camera) {
   return camera?.name || `Camera ${camera?.id ?? "—"}`;
@@ -11,41 +11,88 @@ function getCameraLocation(camera) {
 }
 
 function isCameraOnline(camera) {
+  if (!camera?.id) return false;
   const status = String(camera?.status || "")
     .trim()
     .toLowerCase();
 
-  return (
-    status === "online" ||
-    status === "active" ||
-    status === "running"
-  );
+  return status !== "offline" && status !== "error";
 }
-
-function isBrowserPlayableStream(url) {
-  const value = String(url || "").trim().toLowerCase();
-
-  return (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("blob:")
-  );
-}
-
-/* ============================================================
-   CAMERA CARD
-============================================================ */
 
 function CameraCard({ camera, index }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [zonePoints, setZonePoints] = useState([]);
+  const [zoneId, setZoneId] = useState(null);
+  const [zoneSaving, setZoneSaving] = useState(false);
+  const [zoneMessage, setZoneMessage] = useState("");
+  const imageRef = useRef(null);
 
   const name = getCameraName(camera);
   const location = getCameraLocation(camera);
   const online = isCameraOnline(camera);
-  const streamPlayable = isBrowserPlayableStream(
-    camera?.stream_url
-  );
+  const streamURL = liveStreamUrl(camera.id);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    let active = true;
+    getZones().then((zones) => {
+      const zone = zones.find((item) => item.camera_id === camera.id && item.type === "restricted_zone");
+      if (active && zone) {
+        setZoneId(zone.id);
+        setZonePoints(zone.coordinates || []);
+      }
+    }).catch(() => active && setZoneMessage("Saved zone could not be loaded."));
+    return () => { active = false; };
+  }, [viewerOpen, camera.id]);
+
+  const addZonePoint = (event) => {
+    const image = imageRef.current;
+    if (!image?.naturalWidth || !image?.naturalHeight) {
+      setZoneMessage("Wait for a live frame before drawing.");
+      return;
+    }
+    const rect = image.getBoundingClientRect();
+    const containerAspect = rect.width / rect.height;
+    const imageAspect = image.naturalWidth / image.naturalHeight;
+
+    let renderedWidth = rect.width;
+    let renderedHeight = rect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (containerAspect > imageAspect) {
+      renderedWidth = rect.height * imageAspect;
+      offsetX = (rect.width - renderedWidth) / 2;
+    } else {
+      renderedHeight = rect.width / imageAspect;
+      offsetY = (rect.height - renderedHeight) / 2;
+    }
+
+    const clickX = event.clientX - rect.left - offsetX;
+    const clickY = event.clientY - rect.top - offsetY;
+
+    if (clickX < 0 || clickY < 0 || clickX > renderedWidth || clickY > renderedHeight) return;
+
+    const x = Math.round(clickX * (image.naturalWidth / renderedWidth));
+    const y = Math.round(clickY * (image.naturalHeight / renderedHeight));
+
+    setZonePoints((points) => [...points, { x, y }]);
+    setZoneMessage("");
+  };
+
+  const saveZone = async () => {
+    if (zonePoints.length < 3) { setZoneMessage("A restricted zone needs at least three points."); return; }
+    setZoneSaving(true);
+    try {
+      const result = await saveRestrictedZone(camera.id, zonePoints, zoneId);
+      const zone = result?.zone;
+      if (zone?.id) setZoneId(zone.id);
+      setZoneMessage("Restricted zone saved to the AI worker.");
+    } catch (error) {
+      setZoneMessage(error instanceof Error ? error.message : "Unable to save zone.");
+    } finally { setZoneSaving(false); }
+  };
 
   return (
     <>
@@ -83,13 +130,10 @@ function CameraCard({ camera, index }) {
             <div className="absolute -left-1/3 top-0 h-full w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent blur-md transition-transform duration-1000 group-hover:translate-x-[420%]" />
           </div>
 
-          {streamPlayable && !videoFailed ? (
-            <video
-              src={camera.stream_url}
-              autoPlay
-              muted
-              playsInline
-              controls={false}
+          {online && !videoFailed ? (
+            <img
+              src={streamURL}
+              alt={`${name} live feed`}
               onError={() => setVideoFailed(true)}
               className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]"
             />
@@ -237,17 +281,25 @@ function CameraCard({ camera, index }) {
               </div>
             </div>
 
-            <div className="aspect-video bg-[#061323]">
-              {streamPlayable && !videoFailed ? (
-                <video
-                  src={camera.stream_url}
-                  autoPlay
-                  muted
-                  playsInline
-                  controls
-                  onError={() => setVideoFailed(true)}
-                  className="h-full w-full object-contain"
-                />
+            <div className="relative aspect-video bg-[#061323]">
+              {online && !videoFailed ? (
+                <>
+                  <img ref={imageRef} src={streamURL} alt={`${name} live feed`} onError={() => setVideoFailed(true)}
+                    onClick={addZonePoint} className="h-full w-full cursor-crosshair object-contain" />
+                  {imageRef.current?.naturalWidth > 0 && (
+                    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${imageRef.current.naturalWidth} ${imageRef.current.naturalHeight}`} preserveAspectRatio="xMidYMid meet">
+                      {zonePoints.length > 1 && <polygon points={zonePoints.map((point) => `${point.x},${point.y}`).join(" ")} fill="rgba(239,68,68,0.22)" stroke="#f87171" strokeWidth="3" />}
+                      {zonePoints.map((point, pointIndex) => <circle key={`${point.x}-${point.y}-${pointIndex}`} cx={point.x} cy={point.y} r="7" fill="#fbbf24" stroke="#111827" strokeWidth="2" />)}
+                    </svg>
+                  )}
+                  <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-2 rounded-lg bg-slate-950/80 p-2 text-[10px] text-white backdrop-blur">
+                    <span>{zonePoints.length} point{zonePoints.length === 1 ? "" : "s"}</span>
+                    <button type="button" onClick={() => { setZonePoints((points) => points.slice(0, -1)); setZoneMessage(""); }} disabled={!zonePoints.length} className="rounded bg-slate-700 px-2 py-1 disabled:opacity-40">Undo</button>
+                    <button type="button" onClick={() => { setZonePoints([]); setZoneMessage(""); }} className="rounded bg-slate-700 px-2 py-1">Reset</button>
+                    <button type="button" onClick={saveZone} disabled={zoneSaving || zonePoints.length < 3} className="rounded bg-emerald-600 px-2 py-1 disabled:opacity-40">{zoneSaving ? "Saving..." : "Save zone"}</button>
+                  </div>
+                  {zoneMessage && <p className="absolute bottom-16 left-4 z-10 max-w-md rounded bg-slate-950/80 px-3 py-2 text-[10px] text-white">{zoneMessage}</p>}
+                </>
               ) : (
                 <div className="flex h-full items-center justify-center px-8 text-center">
                   <div>
@@ -470,7 +522,8 @@ export default function LiveCameraGrid() {
       return;
     }
 
-    loadData();
+    const initialLoad = window.setTimeout(() => loadData(), 0);
+    return () => window.clearTimeout(initialLoad);
   }, [loadData, navigate]);
 
   const handleRefresh = () => {

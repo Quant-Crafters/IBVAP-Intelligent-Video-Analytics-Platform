@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Pencil, Plus, Trash2, X } from "lucide-react";
-import { apiRequest } from "../../services/api";
+import { apiRequest, cameraAction } from "../../services/api";
 
 const EMPTY_FORM = {
+  camera_id: "",
   name: "",
   stream_url: "",
+  camera_type: "ip_webcam",
   location: "",
   status: "offline",
 };
@@ -69,8 +71,10 @@ export default function CameraManagement() {
 
     setEditingId(camera.id);
     setForm({
+      camera_id: camera.camera_id || "",
       name: camera.name || "",
       stream_url: camera.stream_url || "",
+      camera_type: camera.camera_type || "ip_webcam",
       location: camera.location || "",
       status: String(camera.status || "offline").toLowerCase(),
     });
@@ -86,8 +90,10 @@ export default function CameraManagement() {
     setSuccessMessage("");
 
     const payload = {
+      camera_id: form.camera_id.trim(),
       name: form.name.trim(),
       stream_url: form.stream_url.trim(),
+      camera_type: form.camera_type,
       location: form.location.trim(),
       status: form.status.toLowerCase(),
     };
@@ -121,6 +127,17 @@ export default function CameraManagement() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const runAction = async (camera, action) => {
+    setErrorMessage("");
+    try {
+      await cameraAction(camera.id, action);
+      setSuccessMessage(`Camera ${action} request completed.`);
+      await loadCameras();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : `Unable to ${action} camera.`);
     }
   };
 
@@ -334,6 +351,10 @@ export default function CameraManagement() {
             className="grid gap-5 p-6 md:grid-cols-2"
           >
             <div>
+              <label htmlFor="camera-id" className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Camera ID</label>
+              <input id="camera-id" name="camera_id" value={form.camera_id} onChange={handleChange} required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:bg-white" placeholder="gate-01" />
+            </div>
+            <div>
               <label
                 htmlFor="camera-name"
                 className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500"
@@ -386,7 +407,7 @@ export default function CameraManagement() {
                 onChange={handleChange}
                 required
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-violet-200 hover:bg-white focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
-                placeholder="rtsp://..."
+                placeholder="rtsp://... or 0 for PC webcam"
               />
             </div>
 
@@ -408,6 +429,13 @@ export default function CameraManagement() {
               >
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="camera-type" className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stream Type</label>
+              <select id="camera-type" name="camera_type" value={form.camera_type} onChange={handleChange} required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:bg-white">
+                <option value="ip_webcam">IP / HTTP camera</option><option value="rtsp">RTSP camera</option><option value="usb">USB camera</option>
               </select>
             </div>
 
@@ -519,6 +547,11 @@ export default function CameraManagement() {
                         <Pencil size={13} />
                         Edit
                       </button>
+
+                      <button type="button" onClick={() => runAction(camera, "test")} className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 shadow-sm hover:bg-blue-50">Test</button>
+                      <button type="button" onClick={() => runAction(camera, "start")} className="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-emerald-700">Start</button>
+                      <button type="button" onClick={() => runAction(camera, "stop")} className="inline-flex items-center rounded-xl border border-amber-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 shadow-sm hover:bg-amber-50">Stop</button>
+                      <button type="button" onClick={() => runAction(camera, "restart")} className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 shadow-sm hover:bg-slate-50">Restart</button>
 
                       <button
                         type="button"

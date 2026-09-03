@@ -55,7 +55,7 @@ PLATE_CHECK_INTERVAL = 3
 
 
 def bbox_overlaps_zone(bbox, zone_points, min_overlap_ratio=0.15):
-    if not zone_points or len(zone_points) < 3:
+    if zone_points is None or len(zone_points) < 3:
         return False
     x1, y1, x2, y2 = bbox
     box_w = max(1, x2 - x1)
@@ -122,6 +122,29 @@ def check_movement_consistency(curr_person_center, curr_object_center, prev_pers
         return True
 
 
+def parse_capture_source(stream_url):
+    """
+    Parses a camera stream source.
+    If stream_url is a digit string (e.g. "0", "1", "2") or "webcam", "webcam:0",
+    returns an integer device index for cv2.VideoCapture(index).
+    Otherwise returns the stream_url string (e.g., RTSP, HTTP, file path).
+    """
+    if stream_url is None:
+        return 0
+    if isinstance(stream_url, int):
+        return stream_url
+    s = str(stream_url).strip()
+    if s.isdigit():
+        return int(s)
+    if s.lower() in ("webcam", "default", "cam0", "camera0"):
+        return 0
+    if s.lower().startswith("webcam:"):
+        idx_str = s.split(":")[-1]
+        if idx_str.isdigit():
+            return int(idx_str)
+    return s
+
+
 class CameraWorker:
     """
     Independent runtime video worker for a single camera.
@@ -148,6 +171,8 @@ class CameraWorker:
         self._thread = None
         self._stop_requested = threading.Event()
         self._config_lock = threading.Lock()
+        self._frame_lock = threading.Lock()
+        self._latest_jpeg = None
 
         # Isolated AI Subsystems
         self.incident_recorder = IncidentRecorder(camera_id=self.camera_id)
@@ -259,6 +284,11 @@ class CameraWorker:
             "last_active": datetime.fromtimestamp(self.last_active).isoformat()
         }
 
+    def get_latest_jpeg(self):
+        """Return the latest processed frame for the browser stream."""
+        with self._frame_lock:
+            return self._latest_jpeg
+
     def _run_loop(self):
         """Main processing loop with auto-reconnect backoff logic."""
         cap = None
@@ -273,8 +303,12 @@ class CameraWorker:
 
             # Connection Attempt
             if cap is None or not cap.isOpened():
-                print(f"[{self.camera_id}] Connecting to stream: {self.stream_url}...")
-                cap = cv2.VideoCapture(self.stream_url)
+                source = parse_capture_source(self.stream_url)
+                print(f"[{self.camera_id}] Connecting to stream source: {source} (raw: {self.stream_url})...")
+                if isinstance(source, int):
+                    cap = cv2.VideoCapture(source, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(source)
+                else:
+                    cap = cv2.VideoCapture(source)
 
                 if not cap.isOpened():
                     consecutive_failures += 1
@@ -305,6 +339,12 @@ class CameraWorker:
 
             try:
                 self._process_frame(frame)
+                # The processing pipeline draws its overlays in-place. Keep one
+                # JPEG for browser clients instead of opening the camera again.
+                ok, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ok:
+                    with self._frame_lock:
+                        self._latest_jpeg = encoded.tobytes()
             except Exception as e:
                 print(f"[{self.camera_id}] ⚠️ Frame processing error: {e}")
 
@@ -570,6 +610,84 @@ class CameraWorker:
             )
             threat_res["associated_vehicle_data"] = assoc_v_data
             self.person_threat_results[track_id] = threat_res
+
+        # ========================================================
+        # DRAW OVERLAYS FOR LIVE STREAM & RECORDINGS
+        # ========================================================
+
+        # 1. Restricted Zone Polygon Overlay
+        if len(self.zone) >= 3:
+            zone_pts = np.array(self.zone, np.int32)
+            is_breached = len(current_inside_ids) > 0
+            zone_color = (0, 0, 255) if is_breached else (0, 255, 255)
+            cv2.polylines(frame, [zone_pts], isClosed=True, color=zone_color, thickness=2)
+            cv2.putText(
+                frame,
+                "RESTRICTED ZONE" + (" [BREACH]" if is_breached else ""),
+                (self.zone[0][0], max(self.zone[0][1] - 10, 20)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                zone_color,
+                2
+            )
+
+        # 2. Tracked Persons & Threat Scores
+        for track_id, p_bbox in tracked_person_bboxes.items():
+            px1, py1, px2, py2 = p_bbox
+            t_info = self.person_threat_results.get(track_id, {})
+            t_score = t_info.get("score", 0)
+            severity = t_info.get("severity", "LOW")
+
+            if track_id in current_inside_ids or severity == "HIGH":
+                p_color = (0, 0, 255)
+            elif severity == "MEDIUM":
+                p_color = (0, 165, 255)
+            else:
+                p_color = (0, 255, 0)
+
+            cv2.rectangle(frame, (px1, py1), (px2, py2), p_color, 2)
+
+            lbl_parts = [f"ID #{track_id}"]
+            if track_id in current_inside_ids:
+                lbl_parts.append("ZONE BREACH")
+            if track_id in self.dwell_alerted_ids:
+                lbl_parts.append("LONG DWELL")
+            if track_id in carried_person_ids:
+                lbl_parts.append("CARRIED OBJ")
+
+            lbl_text = " | ".join(lbl_parts) + f" (Score: {t_score})"
+            cv2.putText(
+                frame,
+                lbl_text,
+                (px1, max(py1 - 10, 20)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                p_color,
+                2
+            )
+
+        # 3. Vehicle Detections & License Plates
+        draw_vehicle_detections(frame, confirmed_vehicles)
+        for v in confirmed_vehicles:
+            v_id = v["id"]
+            p_state = self.vehicle_plate_states.get(v_id)
+            if p_state:
+                info = p_state.to_dict(vehicle_type=v["type"])
+                if info.get("plate_bbox"):
+                    bx1, by1, bx2, by2 = info["plate_bbox"]
+                    p_country = info.get("plate_country", "UNKNOWN")
+                    p_num = info.get("plate_number", "UNKNOWN")
+                    plt_color = (0, 255, 0) if p_country == "INDIA" else ((0, 255, 255) if p_country == "NON_INDIA" else (0, 165, 255))
+                    cv2.rectangle(frame, (bx1, by1), (bx2, by2), plt_color, 2)
+                    cv2.putText(
+                        frame,
+                        f"PLATE: {p_num} ({p_country})",
+                        (bx1, max(by1 - 8, 15)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55,
+                        plt_color,
+                        2
+                    )
 
         # ========================================================
         # SECURITY EVENT GENERATION & BACKEND DISPATCH

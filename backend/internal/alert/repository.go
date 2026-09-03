@@ -45,3 +45,8 @@ func (r *Repository) Update(alert *Alert) error {
 func (r *Repository) Delete(id uint) error {
 	return r.db.Delete(&Alert{}, id).Error
 }
+
+func (r *Repository) ClearAll() (int64, error) {
+	result := r.db.Exec("DELETE FROM alerts")
+	return result.RowsAffected, result.Error
+}

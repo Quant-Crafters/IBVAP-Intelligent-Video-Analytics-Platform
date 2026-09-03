@@ -133,4 +133,44 @@ export async function getEvidence() {
   return Array.isArray(data) ? data : Array.isArray(data?.evidence) ? data.evidence : [];
 }
 
+export async function cameraAction(id, action) {
+  return apiRequest(`/cameras/${id}/${action}`, { method: "POST" });
+}
+
+export async function getCameraRuntime(id) {
+  return apiRequest(`/cameras/${id}/runtime`);
+}
+
+export function liveStreamUrl(id) {
+  return `${API_BASE}/cameras/${id}/live`;
+}
+
+export async function getZones() {
+  const data = await apiRequest("/zones/");
+  return Array.isArray(data?.zones) ? data.zones : [];
+}
+
+export async function saveRestrictedZone(cameraId, coordinates, zoneId) {
+  const payload = { camera_id: cameraId, name: "Restricted zone", type: "restricted_zone", coordinates };
+  const path = zoneId ? `/zones/${zoneId}` : "/zones/";
+  return apiRequest(path, { method: zoneId ? "PUT" : "POST", body: JSON.stringify(zoneId ? { name: payload.name, type: payload.type, coordinates } : payload) });
+}
+
+export function evidenceFileUrl(filePath) {
+  if (!filePath) return null;
+  if (/^https?:\/\//i.test(filePath)) return filePath;
+
+  const backendRoot = API_BASE.replace(/\/api$/, "");
+  let cleanPath = String(filePath).replace(/\\/g, "/");
+
+  const uploadIndex = cleanPath.toLowerCase().indexOf("uploads/");
+  if (uploadIndex !== -1) {
+    cleanPath = cleanPath.slice(uploadIndex);
+  } else {
+    cleanPath = cleanPath.replace(/^[a-zA-Z]:\//, "").replace(/^\/+/, "");
+  }
+
+  return `${backendRoot}/${cleanPath}`;
+}
+
 export { apiRequest };
