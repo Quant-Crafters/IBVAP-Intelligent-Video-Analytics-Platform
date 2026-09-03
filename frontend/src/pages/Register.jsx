@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Shield,
@@ -12,6 +12,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import { register } from "../services/api";
 
 const roles = [
   {
@@ -101,32 +102,12 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          role: selectedRole,
-        }),
+      await register({
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: selectedRole,
       });
-
-      let data = {};
-
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Unable to create the account. Please try again."
-        );
-      }
 
       setSuccessMessage(
         "Account created successfully. Redirecting to Officer Login..."

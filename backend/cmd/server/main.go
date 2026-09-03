@@ -180,6 +180,7 @@ func main() {
 
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(corsMiddleware(cfg.AllowedOrigins))
 
 	// ---------------------------------------------------------
 	// Health check
@@ -266,5 +267,34 @@ func main() {
 
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("failed to start server: %v", err)
+	}
+}
+
+func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
+	allowed := make(map[string]struct{}, len(allowedOrigins))
+	for _, origin := range allowedOrigins {
+		allowed[origin] = struct{}{}
+	}
+
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if _, ok := allowed[origin]; ok {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		}
+
+		if c.Request.Method == http.MethodOptions {
+			if _, ok := allowed[origin]; ok {
+				c.Status(http.StatusNoContent)
+			} else {
+				c.Status(http.StatusForbidden)
+			}
+			c.Abort()
+			return
+		}
+
+		c.Next()
 	}
 }

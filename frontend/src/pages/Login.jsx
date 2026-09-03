@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Eye,
   EyeOff,
-  ShieldCheck,
   ArrowLeft,
 } from "lucide-react";
+import { login } from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -39,27 +39,10 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const response = await fetch(
-        "/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: formData.username.trim(),
-            password: formData.password,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Login failed"
-        );
-      }
+      const data = await login({
+        email: formData.username.trim(),
+        password: formData.password,
+      });
 
       // =====================================================
       // VALIDATE AUTH RESPONSE

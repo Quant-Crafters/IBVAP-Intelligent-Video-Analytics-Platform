@@ -1,15 +1,17 @@
-const API_BASE = "/api";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/+$/, "");
+const HEALTH_URL = import.meta.env.VITE_HEALTH_URL || `${API_BASE.replace(/\/api$/, "")}/health`;
 
 async function apiRequest(path, options = {}) {
   const token = localStorage.getItem("ibvap_token");
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers || {});
+
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -17,21 +19,51 @@ async function apiRequest(path, options = {}) {
     headers,
   });
 
-  let data = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("ibvap_token");
+      localStorage.removeItem("ibvap_user");
+    }
+
     const message =
       data?.error ||
+      data?.detail ||
       data?.message ||
       `Request failed with status ${response.status}`;
 
     throw new Error(message);
+  }
+
+  return data;
+}
+
+export function login(credentials) {
+  return apiRequest("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export function register(account) {
+  return apiRequest("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(account),
+  });
+}
+
+export async function getHealth() {
+  const response = await fetch(HEALTH_URL, {
+    headers: { Accept: "application/json" },
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || data?.detail || data?.message || `Health check failed (${response.status}).`
+    );
   }
 
   return data;
@@ -98,7 +130,7 @@ export async function getEvents(filters = {}) {
 
 export async function getEvidence() {
   const data = await apiRequest("/evidence/");
-  return Array.isArray(data?.evidence) ? data.evidence : [];
+  return Array.isArray(data) ? data : Array.isArray(data?.evidence) ? data.evidence : [];
 }
 
 export { apiRequest };

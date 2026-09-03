@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, RefreshCw } from "lucide-react";
-import { apiRequest } from "../../services/api";
+import { ArrowLeft, RefreshCw } from "lucide-react";
+import { apiRequest, getHealth } from "../../services/api";
 
 const REFRESH_INTERVAL = 10000;
 
@@ -34,28 +34,7 @@ export default function SystemHealth() {
     setCameraError("");
 
     try {
-      /*
-       * /health is the backend's root health endpoint.
-       * apiRequest is used for the authenticated camera endpoint.
-       */
-      const healthResponse = await fetch("/health", {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      const healthPayload = await healthResponse
-        .json()
-        .catch(() => ({}));
-
-      if (!healthResponse.ok) {
-        throw new Error(
-          healthPayload?.error ||
-            healthPayload?.message ||
-            `Health check failed (${healthResponse.status}).`
-        );
-      }
+      const healthPayload = await getHealth();
 
       setHealth(healthPayload);
 

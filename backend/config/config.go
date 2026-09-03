@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -20,6 +21,8 @@ type Config struct {
 	JWTSecret string
 
 	UploadDir string
+
+	AllowedOrigins []string
 }
 
 func Load() (*Config, error) {
@@ -40,6 +43,8 @@ func Load() (*Config, error) {
 		JWTSecret: getEnv("JWT_SECRET", ""),
 
 		UploadDir: getEnv("UPLOAD_DIR", "uploads"),
+
+		AllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -76,4 +81,15 @@ func (c *Config) validate() error {
 	}
 
 	return nil
+}
+
+func splitCSV(value string) []string {
+	items := strings.Split(value, ",")
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if origin := strings.TrimSpace(item); origin != "" {
+			result = append(result, origin)
+		}
+	}
+	return result
 }

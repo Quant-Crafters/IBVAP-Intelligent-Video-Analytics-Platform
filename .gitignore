@@ -1,0 +1,16 @@
+# AI runtime-generated files
+ai_engine/events/
+ai_engine/debug/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large AI models
+*.pt
+
+# Environment files
+.env
+
+# Frontend dependencies
+frontend/node_modules/
