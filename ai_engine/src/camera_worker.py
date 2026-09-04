@@ -58,13 +58,15 @@ def bbox_overlaps_zone(bbox, zone_points, min_overlap_ratio=0.15):
     if zone_points is None or len(zone_points) < 3:
         return False
     x1, y1, x2, y2 = bbox
-    box_w = max(1, x2 - x1)
-    box_h = max(1, y2 - y1)
-    box_area = box_w * box_h
-
     center_x = (x1 + x2) // 2
     center_y = (y1 + y2) // 2
     if cv2.pointPolygonTest(zone_points, (center_x, center_y), False) >= 0:
+        return True
+
+    # Fast short-circuit: 2 or more corners inside zone polygon
+    corners = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
+    inside_count = sum(1 for pt in corners if cv2.pointPolygonTest(zone_points, pt, False) >= 0)
+    if inside_count >= 2:
         return True
 
     zx, zy, zw, zh = cv2.boundingRect(zone_points)
@@ -76,6 +78,9 @@ def bbox_overlaps_zone(bbox, zone_points, min_overlap_ratio=0.15):
     if ix2 <= ix1 or iy2 <= iy1:
         return False
 
+    box_w = max(1, x2 - x1)
+    box_h = max(1, y2 - y1)
+    box_area = box_w * box_h
     roi_w = ix2 - ix1
     roi_h = iy2 - iy1
 
@@ -173,6 +178,12 @@ class CameraWorker:
         self._config_lock = threading.Lock()
         self._frame_lock = threading.Lock()
         self._latest_jpeg = None
+        self._latest_raw_frame = None
+        self._ingestion_thread = None
+
+        from concurrent.futures import ThreadPoolExecutor
+        self._ocr_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"AsyncOCR-{self.camera_id}")
+        self._active_ocr_vids = set()
 
         # Isolated AI Subsystems
         self.incident_recorder = IncidentRecorder(camera_id=self.camera_id)
@@ -323,8 +334,17 @@ class CameraWorker:
                 self.error_message = None
                 consecutive_failures = 0
 
-            # Frame Processing Loop
+            # Priority 2: Non-blocking frame ingestion - drain driver backlog to grab freshest frame
             ret, frame = cap.read()
+            # Drain intermediate buffered frames if processing was delayed
+            while cap.isOpened() and cap.grab():
+                # Grab latest frame metadata quickly, then retrieve image on final frame
+                next_ret, next_frame = cap.retrieve()
+                if next_ret and next_frame is not None and next_frame.size > 0:
+                    frame = next_frame
+                    ret = next_ret
+                else:
+                    break
 
             if not ret or frame is None or frame.size == 0:
                 print(f"[{self.camera_id}] ⚠️ Stream lost / frame read failed.")
@@ -371,24 +391,6 @@ class CameraWorker:
 
         # Continuous rolling memory buffer update
         self.incident_recorder.update_buffer(frame, actual_fps=30.0)
-
-        # Hand Detection
-        hand_centers = []
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        hand_result = self.model_loader.detect_hands(mp_image)
-
-        if hand_result and hand_result.hand_landmarks:
-            for hand_landmarks in hand_result.hand_landmarks:
-                wrist = hand_landmarks[0]
-                hand_x = int(wrist.x * frame_width)
-                hand_y = int(wrist.y * frame_height)
-                hand_centers.append((hand_x, hand_y))
-                if settings.DISPLAY_ENABLED:
-                    for landmark in hand_landmarks:
-                        lx = int(landmark.x * frame_width)
-                        ly = int(landmark.y * frame_height)
-                        cv2.circle(frame, (lx, ly), 3, (0, 0, 255), -1)
 
         # YOLO Tracking
         results = self.model_loader.run_yolo_tracking(frame)
@@ -471,11 +473,30 @@ class CameraWorker:
                         "center": ((x1 + x2) // 2, (y1 + y2) // 2)
                     })
 
+        # Priority 6: Hand Detection executed conditionally only when persons are present in the scene
+        hand_centers = []
+        if len(tracked_person_bboxes) > 0:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            hand_result = self.model_loader.detect_hands(mp_image)
+
+            if hand_result and hand_result.hand_landmarks:
+                for hand_landmarks in hand_result.hand_landmarks:
+                    wrist = hand_landmarks[0]
+                    hand_x = int(wrist.x * frame_width)
+                    hand_y = int(wrist.y * frame_height)
+                    hand_centers.append((hand_x, hand_y))
+                    if settings.DISPLAY_ENABLED:
+                        for landmark in hand_landmarks:
+                            lx = int(landmark.x * frame_width)
+                            ly = int(landmark.y * frame_height)
+                            cv2.circle(frame, (lx, ly), 3, (0, 0, 255), -1)
+
         # Vehicle Detection
         vehicle_detections = extract_vehicles_from_results(results)
         confirmed_vehicles = self.vehicle_tracker_manager.update(vehicle_detections)
 
-        # Plate Processing
+        # Priority 1: Non-blocking Async Plate Processing (EasyOCR runs in background worker thread)
         if self.frame_counter % PLATE_CHECK_INTERVAL == 0:
             for v in confirmed_vehicles:
                 v_id = v["id"]
@@ -483,14 +504,47 @@ class CameraWorker:
                 if v_id not in self.vehicle_plate_states:
                     self.vehicle_plate_states[v_id] = VehiclePlateState(vehicle_id=v_id, vehicle_type=v["type"])
 
-                plate_res = process_number_plate(frame, v_bbox)
-                if plate_res and plate_res.get("plate_detected"):
-                    self.vehicle_plate_states[v_id].add_observation(
-                        plate_number=plate_res.get("plate_number"),
-                        country=plate_res.get("plate_country"),
-                        confidence=plate_res.get("confidence", 0.0),
-                        plate_bbox=plate_res.get("plate_bbox")
-                    )
+                if v_id not in self._active_ocr_vids:
+                    self._active_ocr_vids.add(v_id)
+                    vx1, vy1, vx2, vy2 = v_bbox
+                    fh, fw = frame.shape[:2]
+                    vx1 = max(0, min(vx1, fw - 1))
+                    vy1 = max(0, min(vy1, fh - 1))
+                    vx2 = max(0, min(vx2, fw))
+                    vy2 = max(0, min(vy2, fh))
+
+                    if vx2 > vx1 and vy2 > vy1:
+                        v_crop = frame[vy1:vy2, vx1:vx2].copy()
+
+                        def _async_plate_worker(worker_self, vehicle_id, crop_img, original_bbox, vehicle_type, f_count):
+                            try:
+                                res = process_number_plate(crop_img, [0, 0, crop_img.shape[1], crop_img.shape[0]], vehicle_type=vehicle_type, vehicle_id=vehicle_id, frame_counter=f_count)
+                                if res and res.get("candidate_found"):
+                                    p_num = res.get("plate_number")
+                                    p_country = res.get("plate_country")
+                                    p_conf = res.get("plate_confidence", 0.0)
+                                    rel_box = res.get("plate_bbox")
+                                    abs_box = [original_bbox[0] + rel_box[0], original_bbox[1] + rel_box[1], original_bbox[0] + rel_box[2], original_bbox[1] + rel_box[3]] if rel_box else None
+                                    p_sharp = res.get("sharpness", 0.0)
+                                    p_qual = res.get("quality_score", 0.0)
+
+                                    with worker_self._config_lock:
+                                        if vehicle_id in worker_self.vehicle_plate_states:
+                                            worker_self.vehicle_plate_states[vehicle_id].add_ocr_sample(
+                                                plate_number=p_num,
+                                                country=p_country,
+                                                confidence=p_conf,
+                                                plate_bbox=abs_box,
+                                                sharpness=p_sharp,
+                                                quality_score=p_qual
+                                            )
+                            except Exception as err:
+                                print(f"[{worker_self.camera_id}] Async OCR error: {err}")
+                            finally:
+                                with worker_self._config_lock:
+                                    worker_self._active_ocr_vids.discard(vehicle_id)
+
+                        self._ocr_executor.submit(_async_plate_worker, self, v_id, v_crop, v_bbox, v["type"], self.frame_counter)
 
         # Transition tracking
         people_who_left = self.previous_inside_ids - current_inside_ids

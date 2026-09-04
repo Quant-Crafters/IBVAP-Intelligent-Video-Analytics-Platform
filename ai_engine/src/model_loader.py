@@ -38,9 +38,16 @@ class ModelLoader:
             self.yolo_model_path = self._find_yolo_model()
             self.hand_model_path = self._find_hand_model()
 
-            # Initialize YOLO
-            print(f"🤖 Loading YOLO model from {self.yolo_model_path}...")
+            import torch
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"🤖 Loading YOLO model from {self.yolo_model_path} (Device: {self.device})...")
             self.yolo_model = YOLO(self.yolo_model_path)
+            if self.device == "cuda":
+                try:
+                    self.yolo_model.to("cuda")
+                except Exception as ex:
+                    print(f"⚠️ CUDA move failed, falling back to CPU: {ex}")
+                    self.device = "cpu"
 
             # Initialize MediaPipe Hand Detector
             self.hand_detector = None
@@ -61,7 +68,9 @@ class ModelLoader:
             else:
                 print("⚠️ MediaPipe Hand Landmarker model file not found. Hand tracking will be bypassed.")
 
-            self._inference_lock = threading.Lock()
+            # Fine-grained decoupled locks for YOLO vs MediaPipe (Priority 7)
+            self._yolo_lock = threading.Lock()
+            self._hand_lock = threading.Lock()
             self._initialized = True
 
     def _find_yolo_model(self) -> str:
@@ -87,8 +96,8 @@ class ModelLoader:
         return None
 
     def run_yolo_tracking(self, frame, tracker="bytetrack.yaml", conf=0.20, iou=0.50, imgsz=960):
-        """Thread-safe YOLO tracking inference execution."""
-        with self._inference_lock:
+        """Thread-safe YOLO tracking inference execution with fine-grained lock."""
+        with self._yolo_lock:
             return self.yolo_model.track(
                 frame,
                 persist=True,
@@ -96,14 +105,15 @@ class ModelLoader:
                 conf=conf,
                 iou=iou,
                 imgsz=imgsz,
-                verbose=False
+                verbose=False,
+                device=self.device
             )
 
     def detect_hands(self, mp_image):
-        """Thread-safe MediaPipe hand landmark detection."""
+        """Thread-safe MediaPipe hand landmark detection with separate lock."""
         if self.hand_detector is None:
             return None
-        with self._inference_lock:
+        with self._hand_lock:
             try:
                 return self.hand_detector.detect(mp_image)
             except Exception as e:

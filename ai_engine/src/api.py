@@ -69,19 +69,21 @@ class CameraZoneRequest(BaseModel):
 def mjpeg_frames(camera_id: str):
     """Yield processed worker frames as a browser-compatible MJPEG stream."""
     cid = str(camera_id)
+    last_frame = None
     while True:
         worker = camera_manager.workers.get(cid)
         if worker is None:
             return
         frame = worker.get_latest_jpeg()
-        if frame:
+        if frame and frame is not last_frame:
+            last_frame = frame
             yield (
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n"
                 b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n" +
                 frame + b"\r\n"
             )
-        time.sleep(0.05)
+        time.sleep(0.01)
 
 
 # -----------------------------------------------------------------------------

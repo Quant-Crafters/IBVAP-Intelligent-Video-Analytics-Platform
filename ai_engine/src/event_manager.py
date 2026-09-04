@@ -57,6 +57,8 @@ class EventManager:
 
         self.active_events = set()
         self.dispatcher = get_event_dispatcher()
+        from concurrent.futures import ThreadPoolExecutor
+        self._write_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"EvidenceWrite-{self.camera_id}")
 
     def is_event_active(self, event_type: str, entity_id) -> bool:
         return (event_type, entity_id) in self.active_events
@@ -327,27 +329,29 @@ class EventManager:
                     filename
                 ).replace("\\", "/")
 
-                success = cv2.imwrite(
+                evidence_rel_path = rel_filepath
+
+                # Async writing of image & json metadata
+                json_filename = f"{event_id}.json"
+                abs_json_path = os.path.join(self.json_dir, json_filename)
+                
+                def _async_save_files(img_path, img_data, json_path, record_data, cid):
+                    try:
+                        cv2.imwrite(img_path, img_data)
+                        with open(json_path, "w") as f:
+                            json.dump(record_data, f, indent=4)
+                        print(f"[{cid}] EVIDENCE & METADATA SAVED: {os.path.abspath(img_path)}")
+                    except Exception as err:
+                        print(f"[{cid}] ASYNC EVIDENCE SAVE ERROR: {err}")
+
+                self._write_executor.submit(
+                    _async_save_files,
                     abs_filepath,
-                    annotated
+                    annotated,
+                    abs_json_path,
+                    event_record,
+                    self.camera_id
                 )
-
-                if (
-                    success
-                    and Path(abs_filepath).exists()
-                    and Path(abs_filepath).stat().st_size > 0
-                ):
-                    evidence_rel_path = rel_filepath
-
-                    print(
-                        f"[{self.camera_id}] EVIDENCE SAVED: "
-                        f"{os.path.abspath(abs_filepath)}"
-                    )
-                else:
-                    print(
-                        f"[{self.camera_id}] EVIDENCE SAVE FAILED: "
-                        f"{os.path.abspath(abs_filepath)}"
-                    )
 
             except Exception as e:
                 print(
@@ -355,30 +359,6 @@ class EventManager:
                 )
 
         event_record["evidence_image"] = evidence_rel_path
-
-        # ============================================================
-        # 2. SAVE JSON METADATA
-        # ============================================================
-
-        try:
-            json_filename = f"{event_id}.json"
-
-            abs_json_path = os.path.join(
-                self.json_dir,
-                json_filename
-            )
-
-            with open(abs_json_path, "w") as f:
-                json.dump(
-                    event_record,
-                    f,
-                    indent=4
-                )
-
-        except Exception as e:
-            print(
-                f"[{self.camera_id}] JSON SAVE ERROR: {e}"
-            )
 
         # ============================================================
         # 3. TERMINAL EVENT LOG
