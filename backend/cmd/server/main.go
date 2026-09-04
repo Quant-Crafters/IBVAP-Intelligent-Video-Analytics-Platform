@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 
@@ -257,7 +258,11 @@ func main() {
 	// Start server
 	// ---------------------------------------------------------
 
-	port := cfg.ServerPort
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = cfg.ServerPort
+	}
 
 	if port == "" {
 		port = "8080"
