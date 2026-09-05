@@ -136,9 +136,16 @@ func main() {
 	)
 
 	aiClient := ai.NewClient(cfg.AIServiceURL, cfg.AIServiceToken)
-	cameraHandler := camera.NewHandler(cameraService, aiClient)
 
-	zoneHandler := zone.NewHandler(zoneService, aiClient)
+	cameraHandler := camera.NewHandler(
+		cameraService,
+		aiClient,
+	)
+
+	zoneHandler := zone.NewHandler(
+		zoneService,
+		aiClient,
+	)
 
 	alertHandler := alert.NewHandler(
 		alertService,
@@ -181,6 +188,7 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware(cfg.AllowedOrigins))
+
 	router.Static("/uploads", cfg.UploadDir)
 
 	// ---------------------------------------------------------
@@ -200,56 +208,71 @@ func main() {
 
 	api := router.Group("/api")
 
-	// Authentication
+	// ---------------------------------------------------------
+	// PUBLIC AUTHENTICATION ROUTES
+	// ---------------------------------------------------------
+	// Register/Login must remain public.
+	// ---------------------------------------------------------
+
 	auth.RegisterRoutes(
 		api,
 		authHandler,
 	)
 
+	// ---------------------------------------------------------
+	// PROTECTED ROUTES
+	// ---------------------------------------------------------
+	// Every route registered on this group requires:
+	// Authorization: Bearer <valid-jwt-token>
+	// ---------------------------------------------------------
+
+	protected := api.Group("")
+	protected.Use(auth.AuthMiddleware(jwtManager))
+
 	// Users
 	user.RegisterRoutes(
-		api,
+		protected,
 		userHandler,
 	)
 
 	// Cameras
 	camera.RegisterRoutes(
-		api,
+		protected,
 		cameraHandler,
 	)
 
 	// Zones
 	zone.RegisterRoutes(
-		api,
+		protected,
 		zoneHandler,
 	)
 
 	// Alerts
 	alert.RegisterRoutes(
-		api,
+		protected,
 		alertHandler,
 	)
 
 	// Events
 	event.RegisterRoutes(
-		api,
+		protected,
 		eventHandler,
 	)
 
 	// Audit
 	audit.RegisterRoutes(
-		api,
+		protected,
 		auditHandler,
 	)
 
 	// Evidence
 	evidence.RegisterRoutes(
-		api,
+		protected,
 		evidenceHandler,
 	)
 
 	// WebSocket
-	api.GET(
+	protected.GET(
 		"/ws",
 		websocketHandler.Connect,
 	)
@@ -277,17 +300,25 @@ func main() {
 
 func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
+
 	for _, origin := range allowedOrigins {
 		allowed[origin] = struct{}{}
 	}
 
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
+
 		if _, ok := allowed[origin]; ok {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Vary", "Origin")
-			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Header(
+				"Access-Control-Allow-Headers",
+				"Authorization, Content-Type",
+			)
+			c.Header(
+				"Access-Control-Allow-Methods",
+				"GET, POST, PUT, DELETE, OPTIONS",
+			)
 		}
 
 		if c.Request.Method == http.MethodOptions {
@@ -296,6 +327,7 @@ func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 			} else {
 				c.Status(http.StatusForbidden)
 			}
+
 			c.Abort()
 			return
 		}

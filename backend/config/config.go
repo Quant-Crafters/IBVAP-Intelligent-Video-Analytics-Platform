@@ -48,7 +48,9 @@ func Load() (*Config, error) {
 		AIServiceURL:   getEnv("AI_SERVICE_URL", "http://localhost:8001"),
 		AIServiceToken: getEnv("AI_SERVICE_TOKEN", ""),
 
-		AllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
+		AllowedOrigins: splitCSV(
+			getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"),
+		),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -70,18 +72,20 @@ func getEnv(key, defaultValue string) string {
 
 func (c *Config) validate() error {
 	required := map[string]string{
-		"DB_HOST":          c.DBHost,
-		"DB_PORT":          c.DBPort,
-		"DB_USER":          c.DBUser,
-		"DB_PASSWORD":      c.DBPassword,
-		"DB_NAME":          c.DBName,
-		"JWT_SECRET":       c.JWTSecret,
-		"AI_SERVICE_TOKEN": c.AIServiceToken,
+		"DB_HOST":     c.DBHost,
+		"DB_PORT":     c.DBPort,
+		"DB_USER":     c.DBUser,
+		"DB_PASSWORD": c.DBPassword,
+		"DB_NAME":     c.DBName,
+		"JWT_SECRET":  c.JWTSecret,
 	}
 
 	for key, value := range required {
 		if value == "" {
-			return fmt.Errorf("required environment variable %s is not set", key)
+			return fmt.Errorf(
+				"required environment variable %s is not set",
+				key,
+			)
 		}
 	}
 
@@ -91,10 +95,12 @@ func (c *Config) validate() error {
 func splitCSV(value string) []string {
 	items := strings.Split(value, ",")
 	result := make([]string, 0, len(items))
+
 	for _, item := range items {
 		if origin := strings.TrimSpace(item); origin != "" {
 			result = append(result, origin)
 		}
 	}
+
 	return result
 }
